@@ -6,6 +6,7 @@
     <name>OSGi Tools - Master</name>
     <version>1.00.001-SNAPSHOT</version>
     <packaging>pom</packaging>
+    
     <repositories>
         <repository>
             <name>Internal Nexus Repository</name>
@@ -30,6 +31,7 @@
             </snapshots>
         </repository>
     </repositories>
+    
     <distributionManagement>
         <repository>
             <id>internal-nexus-release-repository</id>

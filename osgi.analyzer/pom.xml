@@ -4,7 +4,7 @@
     <artifactId>osgi.analyzer</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>bundle</packaging>
-    
+
     <name>OSGi Analyzer</name>
 
     <properties>
@@ -19,7 +19,7 @@
         <repository>
             <name>Internal Nexus Repository</name>
             <id>internal-nexus-repository</id>
-            <url>http://repo.pennassurancesoftware.com/content/groups/public</url>
+            <url>http://repo.pennassurancesoftware.com/repository/public</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
@@ -30,7 +30,7 @@
         <repository>
             <name>Internal Nexus Snapshot Repository</name>
             <id>internal-nexus-snapshot-repository</id>
-            <url>http://repo.pennassurancesoftware.com/content/repositories/snapshots</url>
+            <url>http://repo.pennassurancesoftware.com/repository/public-snapshots</url>
             <releases>
                 <enabled>false</enabled>
             </releases>
