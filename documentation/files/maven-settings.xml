@@ -1,0 +1,40 @@
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <servers>
+        <server>
+            <id>internal-nexus-repository</id>
+            <username>jbc</username>
+            <password>london10</password>
+        </server>
+        <server>
+            <id>internal-nexus-snapshot-repository</id>
+            <username>jbc</username>
+            <password>london10</password>
+        </server>
+        <server>
+            <id>internal-nexus-sites-repository</id>
+            <username>jbc</username>
+            <password>london10</password>
+        </server>
+        <server>
+            <id>internal-nexus-release-repository</id>
+            <username>jbc</username>
+            <password>london10</password>
+        </server>
+        <server>
+            <id>equisoft-maven-repository</id>
+            <username>jbridge</username>
+            <password>Passw0rd</password>
+        </server>
+        <server>
+            <id>reb-site</id>
+            <configuration>
+                <knownHostsProvider implementation="org.apache.maven.wagon.providers.ssh.knownhost.NullKnownHostProvider">
+                    <hostKeyChecking>no</hostKeyChecking>
+                </knownHostsProvider>
+            </configuration>
+            <username>jeromebr</username>
+            <password>51ac5R8Nle</password>
+        </server>
+    </servers>
+</settings>
