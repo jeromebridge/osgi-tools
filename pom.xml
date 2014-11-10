@@ -6,7 +6,7 @@
     <name>OSGi Tools - Master</name>
     <version>1.00.001-SNAPSHOT</version>
     <packaging>pom</packaging>
-    
+
     <repositories>
         <repository>
             <name>Internal Nexus Repository</name>
@@ -31,7 +31,7 @@
             </snapshots>
         </repository>
     </repositories>
-    
+
     <distributionManagement>
         <repository>
             <id>internal-nexus-release-repository</id>
@@ -46,12 +46,14 @@
             <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
     </distributionManagement>
+
     <scm>
         <connection>scm:git:git@github.com:jeromebridge/osgi-tools.git</connection>
         <developerConnection>scm:git:git@github.com:jeromebridge/osgi-tools.git</developerConnection>
         <url>https://github.com/jeromebridge/osgi-tools</url>
         <tag>HEAD</tag>
     </scm>
+
     <build>
         <plugins>
             <plugin>

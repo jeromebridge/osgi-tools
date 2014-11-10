@@ -40,6 +40,21 @@
         </repository>
     </repositories>
 
+    <distributionManagement>
+        <repository>
+            <id>internal-nexus-release-repository</id>
+            <name>Internal Nexus Release Repository</name>
+            <url>http://repo.pennassurancesoftware.com/repository/internal/</url>
+            <uniqueVersion>false</uniqueVersion>
+        </repository>
+        <snapshotRepository>
+            <id>internal-nexus-snapshot-repository</id>
+            <name>Internal Nexus Snapshot Repository</name>
+            <url>http://repo.pennassurancesoftware.com/repository/snapshots/</url>
+            <uniqueVersion>false</uniqueVersion>
+        </snapshotRepository>
+    </distributionManagement>
+
     <dependencies>
 
         <!-- OSGi -->
