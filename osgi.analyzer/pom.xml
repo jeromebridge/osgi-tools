@@ -12,6 +12,7 @@
         <maven.compiler.target>1.7</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springsource.util.version>2.0.5.RELEASE</springsource.util.version>
+        <slf4j.version>1.6.1</slf4j.version>
     </properties>
 
 
@@ -56,6 +57,18 @@
     </distributionManagement>
 
     <dependencies>
+    
+        <!-- SLF4J -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>com.springsource.slf4j.api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>com.springsource.slf4j.log4j</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
 
         <!-- OSGi -->
         <dependency>
