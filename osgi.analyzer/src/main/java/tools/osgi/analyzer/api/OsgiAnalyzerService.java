@@ -1,6 +1,7 @@
 package tools.osgi.analyzer.api;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.apache.felix.service.command.Descriptor;
@@ -14,6 +15,7 @@ import org.osgi.service.packageadmin.ExportedPackage;
 import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
+import com.springsource.util.osgi.VersionRange;
 import com.springsource.util.osgi.manifest.BundleManifest;
 import com.springsource.util.osgi.manifest.BundleManifestFactory;
 import com.springsource.util.osgi.manifest.ImportedPackage;
@@ -43,6 +45,25 @@ public class OsgiAnalyzerService {
       printBundlesWithUseConflicts();
    }
 
+   private boolean containsExportForImport( Bundle bundle, ImportedPackage importedPackage ) {
+      return getExportedPackage( bundle, importedPackage ) != null;
+   }
+
+   private Bundle findBestMatchThatSatisfiesImport( ImportedPackage importedPackage ) {
+      final List<Bundle> matches = findBundlesThatSatisfyImport( importedPackage );
+      return matches.isEmpty() ? null : matches.get( 0 );
+   }
+
+   private List<Bundle> findBundlesThatSatisfyImport( ImportedPackage importedPackage ) {
+      final List<Bundle> result = new ArrayList<Bundle>();
+      for( Bundle bundle : bundleContext.getBundles() ) {
+         if( containsExportForImport( bundle, importedPackage ) ) {
+            result.add( bundle );
+         }
+      }
+      return result;
+   }
+
    private List<Bundle> findBundlesWithMissingDependencies() {
       final List<Bundle> result = new ArrayList<Bundle>();
       for( Bundle bundle : bundleContext.getBundles() ) {
@@ -63,52 +84,18 @@ public class OsgiAnalyzerService {
       return result;
    }
 
-   private boolean hasUseConflict( Bundle bundle ) {
-      boolean result = false;
-      final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
-      if( !packageAdmin.resolveBundles( new Bundle[]{ bundle } ) ) {
-         result = true;
-         for( ImportedPackage importedPackage : getImportedPackages( bundle ) ) {
-            final List<Bundle> matches = findBundlesThatSatisfyImport( importedPackage );
-
-            System.out.println( "Import: " + importedPackage );
-            System.out.println( "Matches: " + matches );
-
-            //            final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
-            //            for( ExportedPackage exportedPackage : exportedPackages ) {
-            //               if( importedPackage.getPackageName().equals( exportedPackage.getName() ) ) {
-            //                  result = true;
-            //                  break;
-            //               }
-            //            }
-            //            if( result ) {
-            //               break;
-            //            }
-         }
-
-      }
-      return result;
-   }
-
-   private List<Bundle> findBundlesThatSatisfyImport( ImportedPackage importedPackage ) {
-      final List<Bundle> result = new ArrayList<Bundle>();
-      for( Bundle bundle : bundleContext.getBundles() ) {
-         final List<com.springsource.util.osgi.manifest.ExportedPackage> exportedPackages = getExportedPackages( bundle );
-         for( com.springsource.util.osgi.manifest.ExportedPackage exportedPackage : exportedPackages ) {
-            if( exportedPackage.getPackageName().equals( importedPackage.getPackageName() ) ) {
-               if( importedPackage.getVersion().includes( exportedPackage.getVersion() ) ) {
-                  result.add( bundle );
-                  System.out.println( "Export " + exportedPackage.getPackageName() + " Uses: " + exportedPackage.getUses() );
-                  break;
-               }
+   private com.springsource.util.osgi.manifest.ExportedPackage getExportedPackage( Bundle bundle, ImportedPackage importedPackage ) {
+      com.springsource.util.osgi.manifest.ExportedPackage result = null;
+      final List<com.springsource.util.osgi.manifest.ExportedPackage> exportedPackages = getExportedPackages( bundle );
+      for( com.springsource.util.osgi.manifest.ExportedPackage exportedPackage : exportedPackages ) {
+         if( exportedPackage.getPackageName().equals( importedPackage.getPackageName() ) ) {
+            if( importedPackage.getVersion().includes( exportedPackage.getVersion() ) ) {
+               result = exportedPackage;
+               break;
             }
          }
       }
       return result;
-   }
-
-   private List<ImportedPackage> getImportedPackages( Bundle bundle ) {
-      return getImportedPackages( bundle, null );
    }
 
    private List<com.springsource.util.osgi.manifest.ExportedPackage> getExportedPackages( Bundle bundle ) {
@@ -118,6 +105,10 @@ public class OsgiAnalyzerService {
          result.add( exportedPackage );
       }
       return result;
+   }
+
+   private List<ImportedPackage> getImportedPackages( Bundle bundle ) {
+      return getImportedPackages( bundle, null );
    }
 
    private List<ImportedPackage> getImportedPackages( Bundle bundle, Resolution resolution ) {
@@ -147,6 +138,93 @@ public class OsgiAnalyzerService {
       for( ImportedPackage importedPackage : getOptionalImportedPackages( bundle ) ) {
          if( !isImportedPackageResolved( bundle, importedPackage ) ) {
             result.add( importedPackage );
+         }
+      }
+      return result;
+   }
+
+   private boolean hasUseConflict( Bundle bundle ) {
+      boolean result = false;
+      final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+      if( !packageAdmin.resolveBundles( new Bundle[]{ bundle } ) ) {
+         // Header Conflicts
+         final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
+         for( ImportedPackage importedPackage : importedPackages ) {
+            final Bundle match = findBestMatchThatSatisfiesImport( importedPackage );
+            if( match != null ) {
+               final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = getExportedPackage( match, importedPackage );
+               final List<ImportedPackage> uses = getImportedPackagesForExportUses( match, exportedPackage );
+               for( ImportedPackage use : uses ) {
+                  result = result || containsHeaderConflict( importedPackages, use );
+                  result = result || containsWiringConflict( match, importedPackages, use );
+               }
+            }
+            if( result ) {
+               break;
+            }
+         }
+      }
+      return result;
+   }
+
+   private boolean containsWiringConflict( Bundle providingBundle, List<ImportedPackage> importedPackages, ImportedPackage use ) {
+      boolean result = false;
+      final ImportedPackage match = getMatchingImport( importedPackages, use );
+      if( match != null ) {
+         final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+         if( packageAdmin.resolveBundles( new Bundle[]{ providingBundle } ) ) {
+            result = isImportedPackageResolved( providingBundle, use );
+         }
+      }
+      return result;
+   }
+
+   private boolean containsHeaderConflict( List<ImportedPackage> importedPackages, ImportedPackage use ) {
+      boolean result = false;
+      final ImportedPackage match = getMatchingImport( importedPackages, use );
+      if( match != null ) {
+         result = VersionRange.intersection( match.getVersion(), use.getVersion() ).isEmpty();
+      }
+      return result;
+   }
+
+   private ImportedPackage getMatchingImport( List<ImportedPackage> importedPackages, ImportedPackage use ) {
+      ImportedPackage result = null;
+      for( ImportedPackage importedPackage : importedPackages ) {
+         if( importedPackage.getPackageName().equals( use.getPackageName() ) ) {
+            result = importedPackage;
+         }
+      }
+      return result;
+   }
+
+   private List<ImportedPackage> getImportedPackagesForExportUses( Bundle bundle, com.springsource.util.osgi.manifest.ExportedPackage exportedPackage ) {
+      final List<ImportedPackage> result = new ArrayList<ImportedPackage>();
+      for( String use : exportedPackage.getUses() ) {
+         final ImportedPackage importedPackage = getImportedPackage( bundle, use );
+         if( importedPackage != null ) {
+            result.add( importedPackage );
+         }
+      }
+      return result;
+   }
+
+   @SuppressWarnings("unused")
+   private Comparator<ImportedPackage> getImportedPackageComparator() {
+      return new Comparator<ImportedPackage>() {
+         @Override
+         public int compare( ImportedPackage p1, ImportedPackage p2 ) {
+            return p1.getPackageName().compareTo( p2.getPackageName() );
+         }
+      };
+   }
+
+   private ImportedPackage getImportedPackage( Bundle bundle, String packageName ) {
+      ImportedPackage result = null;
+      for( ImportedPackage importedPackage : getImportedPackages( bundle ) ) {
+         if( importedPackage.getPackageName().equals( packageName ) ) {
+            result = importedPackage;
+            break;
          }
       }
       return result;
