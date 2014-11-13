@@ -36,48 +36,42 @@ public class OsgiAnalyzerService {
          @Descriptor("Find all bundles with missing dependencies") @Parameter(
                names = { "-m", "--missing-dependencies" },
                presentValue = "true",
-               absentValue = "true") boolean includeMissingDependencies
-         )
-   {
-      if( includeMissingDependencies ) {
+               absentValue = "false") boolean includeMissingDependencies,
+         @Descriptor("Find all bundles with use conflicts") @Parameter(
+               names = { "-u", "--use-conflicts" },
+               presentValue = "true",
+               absentValue = "false") boolean includeUseConflicts,
+         @Descriptor("Find all issues with bundles") @Parameter(
+               names = { "-a", "--all" },
+               presentValue = "true",
+               absentValue = "false") boolean includeAll
+         ) {
+      if( includeMissingDependencies || includeAll ) {
          printBundlesWithMissingDependencies();
       }
-      printBundlesWithUseConflicts();
+      if( includeUseConflicts || includeAll ) {
+         printBundlesWithUseConflicts();
+      }
    }
 
    private boolean containsExportForImport( Bundle bundle, ImportedPackage importedPackage ) {
       return getExportedPackage( bundle, importedPackage ) != null;
    }
 
-   private boolean containsHeaderConflict( List<ImportedPackage> importedPackages, ImportedPackage use ) {
-      boolean result = false;
-      final ImportedPackage match = getMatchingImport( importedPackages, use );
-      if( match != null ) {
-         result = VersionRange.intersection( match.getVersion(), use.getVersion() ).isEmpty();
+   @Descriptor("Diagnoses issues with a specified bundle")
+   public void diagnose(
+         @Descriptor("Bundle ID to diagnose issues") String bundleId
+         ) {
+      // Get Bundle
+      final Bundle bundle = bundleContext.getBundle( Long.valueOf( bundleId ) );
+      if( bundle == null ) {
+         throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
       }
-      return result;
-   }
 
-   private boolean containsWiringConflict( Bundle providingBundle, List<ImportedPackage> importedPackages, ImportedPackage use ) {
-      boolean result = false;
-      final ImportedPackage match = getMatchingImport( importedPackages, use );
-      if( match != null ) {
-         final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
-         if( packageAdmin.resolveBundles( new Bundle[]{ providingBundle } ) ) {
-            result = result || !isImportedPackageResolved( providingBundle, use );
-            if( !result ) {
-               final BundleWire wiring = getBundleWire( providingBundle, use.getPackageName() );
-               if( wiring != null ) {
-                  result = result || !containsExportForImport( wiring.getProviderWiring().getBundle(), match );
-//                  if( result ) {
-//                     final com.springsource.util.osgi.manifest.ExportedPackage providingExportPackage = getExportedPackage( wiring.getProviderWiring().getBundle(), match.getPackageName() );
-//                     System.out.println( "Bundle Wire: " + wiring.getProviderWiring().getBundle().getBundleId() + " Conflict: " + match.getPackageName() + " Export Version: " + providingExportPackage.getVersion() + " for: " + match );
-//                  }
-               }
-            }
-         }
-      }
-      return result;
+      // Print
+      System.out.println( "Bundle: " + bundle );
+      printUnresolvedImports( bundle );
+      printUseConflicts( bundle );
    }
 
    private Bundle findBestMatchThatSatisfiesImport( ImportedPackage importedPackage ) {
@@ -115,6 +109,30 @@ public class OsgiAnalyzerService {
       return result;
    }
 
+   private BundleWire getBundleWire( Bundle bundle, String packageName ) {
+      try {
+         BundleWire result = null;
+         final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+         final BundleWiring wiring = bundle.adapt( BundleWiring.class );
+         for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+            final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
+            for( ExportedPackage exportedPackage : exportedPackages ) {
+               if( packageName.equals( exportedPackage.getName() ) ) {
+                  result = required;
+                  break;
+               }
+            }
+            if( result != null ) {
+               break;
+            }
+         }
+         return result;
+      }
+      catch( Exception exception ) {
+         throw new RuntimeException( String.format( "Failed to determine bundle wiring for bundle: %s Package: %s", bundle, packageName ), exception );
+      }
+   }
+
    private com.springsource.util.osgi.manifest.ExportedPackage getExportedPackage( Bundle bundle, ImportedPackage importedPackage ) {
       com.springsource.util.osgi.manifest.ExportedPackage result = null;
       final List<com.springsource.util.osgi.manifest.ExportedPackage> exportedPackages = getExportedPackages( bundle );
@@ -145,6 +163,18 @@ public class OsgiAnalyzerService {
       final BundleManifest manifest = BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
       for( com.springsource.util.osgi.manifest.ExportedPackage exportedPackage : manifest.getExportPackage().getExportedPackages() ) {
          result.add( exportedPackage );
+      }
+      return result;
+   }
+
+   private List<UseConflict> getHeaderUseConflicts( Bundle bundle, Bundle useConflictBundle, ImportedPackage use ) {
+      final List<UseConflict> result = new ArrayList<UseConflict>();
+      final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
+      final ImportedPackage match = getMatchingImport( importedPackages, use );
+      if( match != null ) {
+         if( VersionRange.intersection( match.getVersion(), use.getVersion() ).isEmpty() ) {
+            result.add( new UseConflict( bundle, match, useConflictBundle, use ) );
+         }
       }
       return result;
    }
@@ -242,8 +272,8 @@ public class OsgiAnalyzerService {
       return result;
    }
 
-   private boolean hasUseConflict( Bundle bundle ) {
-      boolean result = false;
+   private List<UseConflict> getUseConflicts( Bundle bundle ) {
+      final List<UseConflict> result = new ArrayList<UseConflict>();
       final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
       if( !packageAdmin.resolveBundles( new Bundle[]{ bundle } ) ) {
          final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
@@ -253,8 +283,8 @@ public class OsgiAnalyzerService {
                final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = getExportedPackage( match, importedPackage );
                final List<ImportedPackage> uses = getImportedPackagesForExportUses( match, exportedPackage );
                for( ImportedPackage use : uses ) {
-                  result = result || containsHeaderConflict( importedPackages, use );
-                  result = result || containsWiringConflict( match, importedPackages, use );
+                  result.addAll( getHeaderUseConflicts( bundle, match, use ) );
+                  result.addAll( getWiringUseConflicts( bundle, match, use ) );
                }
             }
          }
@@ -262,32 +292,34 @@ public class OsgiAnalyzerService {
       return result;
    }
 
-   private boolean isImportedPackageResolved( Bundle bundle, ImportedPackage importedPackage ) {
-      return getBundleWire( bundle, importedPackage.getPackageName() ) != null;
-   }
-
-   private BundleWire getBundleWire( Bundle bundle, String packageName ) {
-      try {
-         BundleWire result = null;
+   private List<UseConflict> getWiringUseConflicts( Bundle bundle, Bundle useConflictBundle, ImportedPackage use ) {
+      final List<UseConflict> result = new ArrayList<UseConflict>();
+      final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
+      final ImportedPackage match = getMatchingImport( importedPackages, use );
+      if( match != null ) {
          final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
-         final BundleWiring wiring = bundle.adapt( BundleWiring.class );
-         for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
-            final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
-            for( ExportedPackage exportedPackage : exportedPackages ) {
-               if( packageName.equals( exportedPackage.getName() ) ) {
-                  result = required;
-                  break;
+         if( packageAdmin.resolveBundles( new Bundle[]{ useConflictBundle } ) ) {
+            if( !isImportedPackageResolved( useConflictBundle, use ) ) {
+               // ADD CONFLICT IF OPTIONAL PACKAGE NOT RESOLVED?
+            }
+            final BundleWire wiring = getBundleWire( useConflictBundle, use.getPackageName() );
+            if( wiring != null ) {
+               if( !containsExportForImport( wiring.getProviderWiring().getBundle(), match ) ) {
+                  final com.springsource.util.osgi.manifest.ExportedPackage useConflictExportPackage = getExportedPackage( wiring.getProviderWiring().getBundle(), match.getPackageName() );
+                  result.add( new UseConflict( bundle, match, useConflictBundle, useConflictExportPackage ) );
                }
             }
-            if( result != null ) {
-               break;
-            }
          }
-         return result;
       }
-      catch( Exception exception ) {
-         throw new RuntimeException( String.format( "Failed to determine bundle wiring for bundle: %s Package: %s", bundle, packageName ), exception );
-      }
+      return result;
+   }
+
+   private boolean hasUseConflict( Bundle bundle ) {
+      return getUseConflicts( bundle ).size() > 0;
+   }
+
+   private boolean isImportedPackageResolved( Bundle bundle, ImportedPackage importedPackage ) {
+      return getBundleWire( bundle, importedPackage.getPackageName() ) != null;
    }
 
    private boolean isRefreshRequired( Bundle bundle ) {
@@ -320,10 +352,45 @@ public class OsgiAnalyzerService {
          final String bundleNameRaw = bundle.getSymbolicName();
          final String bundleName = bundleNameRaw.substring( 0, Math.min( 34, bundleNameRaw.length() ) );
          final Long bundleId = bundle.getBundleId();
-         final int numOfMissingDependencies = getUnresolvedOptionalImportedPackages( bundle ).size();
+         final int numOfMissingDependencies = getUseConflicts( bundle ).size();
          System.out.println( String.format( format, bundleName, bundleId, numOfMissingDependencies ) );
       }
       System.out.println( line );
+   }
+
+   private void printUnresolvedImports( Bundle bundle ) {
+      final List<ImportedPackage> unresolvedImports = getUnresolvedOptionalImportedPackages( bundle );
+      if( unresolvedImports.size() > 0 ) {
+         final String format = "| %1$-35s| %2$-35s|";
+         final String line = new String( new char[String.format( format, "", "" ).length()] ).replace( "\0", "-" );
+         System.out.println( line );
+         System.out.println( String.format( format, "Unresolved Import", "Version" ) );
+         System.out.println( line );
+         for( ImportedPackage importedPackage : unresolvedImports ) {
+            System.out.println( String.format( format, importedPackage.getPackageName(), importedPackage.getVersion().toString() ) );
+         }
+         System.out.println( line );
+      }
+   }
+
+   private void printUseConflicts( Bundle bundle ) {
+      final List<UseConflict> useConflicts = getUseConflicts( bundle );
+      if( useConflicts.size() > 0 ) {
+         final String format = "| %1$-10s| %2$-45s| %3$-35s| %4$-28s| %5$-28s|";
+         final String line = new String( new char[String.format( format, "", "", "", "", "" ).length()] ).replace( "\0", "-" );
+         System.out.println( line );
+         System.out.println( String.format( format, "Type", "Import", "Conflict Bundle", "Import Version", "Conflict Version" ) );
+         System.out.println( line );
+         for( UseConflict useConflict : useConflicts ) {
+            final String type = useConflict.getType().name();
+            final String importPackageName = useConflict.getImportedPackage().getPackageName();
+            final String conflictBundle = useConflict.getUseConflictBundle().getSymbolicName();
+            final String importVersion = useConflict.getImportedPackage().getVersion().toString();
+            final String conflictVersion = UseConflictType.Header.equals( useConflict.getType() ) ? useConflict.getUseConflictImportedPackage().getVersion().toParseString() : useConflict.getUseConflictExportedPackage().getVersion().toString();
+            System.out.println( String.format( format, type, importPackageName, conflictBundle, importVersion, conflictVersion ) );
+         }
+         System.out.println( line );
+      }
    }
 
 }
