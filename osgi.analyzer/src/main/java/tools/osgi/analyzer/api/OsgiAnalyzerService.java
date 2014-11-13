@@ -64,7 +64,17 @@ public class OsgiAnalyzerService {
       if( match != null ) {
          final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
          if( packageAdmin.resolveBundles( new Bundle[]{ providingBundle } ) ) {
-            result = !isImportedPackageResolved( providingBundle, use );
+            result = result || !isImportedPackageResolved( providingBundle, use );
+            if( !result ) {
+               final BundleWire wiring = getBundleWire( providingBundle, use.getPackageName() );
+               if( wiring != null ) {
+                  result = result || !containsExportForImport( wiring.getProviderWiring().getBundle(), match );
+//                  if( result ) {
+//                     final com.springsource.util.osgi.manifest.ExportedPackage providingExportPackage = getExportedPackage( wiring.getProviderWiring().getBundle(), match.getPackageName() );
+//                     System.out.println( "Bundle Wire: " + wiring.getProviderWiring().getBundle().getBundleId() + " Conflict: " + match.getPackageName() + " Export Version: " + providingExportPackage.getVersion() + " for: " + match );
+//                  }
+               }
+            }
          }
       }
       return result;
@@ -247,35 +257,36 @@ public class OsgiAnalyzerService {
                   result = result || containsWiringConflict( match, importedPackages, use );
                }
             }
-            if( result ) {
-               break;
-            }
          }
       }
       return result;
    }
 
    private boolean isImportedPackageResolved( Bundle bundle, ImportedPackage importedPackage ) {
+      return getBundleWire( bundle, importedPackage.getPackageName() ) != null;
+   }
+
+   private BundleWire getBundleWire( Bundle bundle, String packageName ) {
       try {
-         boolean result = false;
+         BundleWire result = null;
          final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
          final BundleWiring wiring = bundle.adapt( BundleWiring.class );
          for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
             final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
             for( ExportedPackage exportedPackage : exportedPackages ) {
-               if( importedPackage.getPackageName().equals( exportedPackage.getName() ) ) {
-                  result = true;
+               if( packageName.equals( exportedPackage.getName() ) ) {
+                  result = required;
                   break;
                }
             }
-            if( result ) {
+            if( result != null ) {
                break;
             }
          }
          return result;
       }
       catch( Exception exception ) {
-         throw new RuntimeException( String.format( "Failed to determine import package resolved for bundle: %s Package: %s", bundle, importedPackage ), exception );
+         throw new RuntimeException( String.format( "Failed to determine bundle wiring for bundle: %s Package: %s", bundle, packageName ), exception );
       }
    }
 
