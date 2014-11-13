@@ -376,18 +376,19 @@ public class OsgiAnalyzerService {
    private void printUseConflicts( Bundle bundle ) {
       final List<UseConflict> useConflicts = getUseConflicts( bundle );
       if( useConflicts.size() > 0 ) {
-         final String format = "| %1$-10s| %2$-45s| %3$-35s| %4$-28s| %5$-28s|";
-         final String line = new String( new char[String.format( format, "", "", "", "", "" ).length()] ).replace( "\0", "-" );
+         final String format = "| %1$-10s| %2$-45s| %3$-35s|%4$20s | %5$-28s| %6$-28s|";
+         final String line = new String( new char[String.format( format, "", "", "", "", "", "" ).length()] ).replace( "\0", "-" );
          System.out.println( line );
-         System.out.println( String.format( format, "Type", "Import", "Conflict Bundle", "Import Version", "Conflict Version" ) );
+         System.out.println( String.format( format, "Type", "Import", "Conflict Bundle", "Conflict Bundle ID", "Import Version", "Conflict Version" ) );
          System.out.println( line );
          for( UseConflict useConflict : useConflicts ) {
             final String type = useConflict.getType().name();
             final String importPackageName = useConflict.getImportedPackage().getPackageName();
             final String conflictBundle = useConflict.getUseConflictBundle().getSymbolicName();
+            final String conflictBundleId = Long.toString( useConflict.getUseConflictBundle().getBundleId() );
             final String importVersion = useConflict.getImportedPackage().getVersion().toString();
             final String conflictVersion = UseConflictType.Header.equals( useConflict.getType() ) ? useConflict.getUseConflictImportedPackage().getVersion().toParseString() : useConflict.getUseConflictExportedPackage().getVersion().toString();
-            System.out.println( String.format( format, type, importPackageName, conflictBundle, importVersion, conflictVersion ) );
+            System.out.println( String.format( format, type, importPackageName, conflictBundle, conflictBundleId, importVersion, conflictVersion ) );
          }
          System.out.println( line );
       }
