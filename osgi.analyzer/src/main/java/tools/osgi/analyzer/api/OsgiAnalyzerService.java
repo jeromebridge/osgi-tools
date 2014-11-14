@@ -327,35 +327,41 @@ public class OsgiAnalyzerService {
    }
 
    private void printBundlesWithMissingDependencies() {
-      final String format = "| %1$-35s|%2$10s |%3$25s |";
-      final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
-      System.out.println( line );
-      System.out.println( String.format( format, "Bundle", "Bundle ID", "Missing Optional Imports" ) );
-      System.out.println( line );
-      for( Bundle bundle : findBundlesWithMissingDependencies() ) {
-         final String bundleNameRaw = bundle.getSymbolicName();
-         final String bundleName = bundleNameRaw.substring( 0, Math.min( 34, bundleNameRaw.length() ) );
-         final Long bundleId = bundle.getBundleId();
-         final int numOfMissingDependencies = getUnresolvedOptionalImportedPackages( bundle ).size();
-         System.out.println( String.format( format, bundleName, bundleId, numOfMissingDependencies ) );
+      final List<Bundle> missingDependencies = findBundlesWithMissingDependencies();
+      if( missingDependencies.size() > 0 ) {
+         final String format = "| %1$-35s|%2$10s |%3$25s |";
+         final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
+         System.out.println( line );
+         System.out.println( String.format( format, "Bundle", "Bundle ID", "Missing Optional Imports" ) );
+         System.out.println( line );
+         for( Bundle bundle : missingDependencies ) {
+            final String bundleNameRaw = bundle.getSymbolicName();
+            final String bundleName = bundleNameRaw.substring( 0, Math.min( 34, bundleNameRaw.length() ) );
+            final Long bundleId = bundle.getBundleId();
+            final int numOfMissingDependencies = getUnresolvedOptionalImportedPackages( bundle ).size();
+            System.out.println( String.format( format, bundleName, bundleId, numOfMissingDependencies ) );
+         }
+         System.out.println( line );
       }
-      System.out.println( line );
    }
 
    private void printBundlesWithUseConflicts() {
-      final String format = "| %1$-35s|%2$10s |%3$25s |";
-      final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
-      System.out.println( line );
-      System.out.println( String.format( format, "Bundle", "Bundle ID", "Use Conflicts" ) );
-      System.out.println( line );
-      for( Bundle bundle : findBundlesWithUseConflicts() ) {
-         final String bundleNameRaw = bundle.getSymbolicName();
-         final String bundleName = bundleNameRaw.substring( 0, Math.min( 34, bundleNameRaw.length() ) );
-         final Long bundleId = bundle.getBundleId();
-         final int numOfMissingDependencies = getUseConflicts( bundle ).size();
-         System.out.println( String.format( format, bundleName, bundleId, numOfMissingDependencies ) );
+      final List<Bundle> useConflicts = findBundlesWithUseConflicts();
+      if( useConflicts.size() > 0 ) {
+         final String format = "| %1$-35s|%2$10s |%3$25s |";
+         final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
+         System.out.println( line );
+         System.out.println( String.format( format, "Bundle", "Bundle ID", "Use Conflicts" ) );
+         System.out.println( line );
+         for( Bundle bundle : useConflicts ) {
+            final String bundleNameRaw = bundle.getSymbolicName();
+            final String bundleName = bundleNameRaw.substring( 0, Math.min( 34, bundleNameRaw.length() ) );
+            final Long bundleId = bundle.getBundleId();
+            final int numOfMissingDependencies = getUseConflicts( bundle ).size();
+            System.out.println( String.format( format, bundleName, bundleId, numOfMissingDependencies ) );
+         }
+         System.out.println( line );
       }
-      System.out.println( line );
    }
 
    private void printUnresolvedImports( Bundle bundle ) {
