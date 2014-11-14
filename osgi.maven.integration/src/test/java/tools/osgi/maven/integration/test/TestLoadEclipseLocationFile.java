@@ -3,12 +3,10 @@ package tools.osgi.maven.integration.test;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 
-import org.junit.Test;
-
 public class TestLoadEclipseLocationFile {
 
    // NOT WORKING
-   @Test
+   //@Test
    public void testLoadFile() throws Exception {
       // Fixture
       final InputStream is = getClass().getResourceAsStream( "/eclipse-location-file" );

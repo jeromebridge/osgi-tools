@@ -9,6 +9,7 @@ public class Activator implements BundleActivator {
    public void start( BundleContext context ) throws Exception {
       try {
          System.out.println( "DEPLOYED" );
+         
       }
       catch( Exception exception ) {
          throw new RuntimeException( String.format( "Error starting bundle: %s, Error: %s", context.getBundle().getSymbolicName(), exception.getMessage() ), exception );
