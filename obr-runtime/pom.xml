@@ -81,7 +81,7 @@
                         <configuration>
                             <copyPom>true</copyPom>
                             <useRepositoryLayout>true</useRepositoryLayout>
-                            <includeScope>runtime</includeScope>
+                            <includeScope>compile</includeScope>
                         </configuration>
                     </execution>
                 </executions>
