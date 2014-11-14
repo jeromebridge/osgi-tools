@@ -74,5 +74,6 @@
     <modules>
         <module>osgi.analyzer</module>
         <module>osgi.maven.integration</module>
+        <module>obr-runtime</module>
     </modules>
 </project>
