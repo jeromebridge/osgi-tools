@@ -13,8 +13,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springsource.util.version>2.0.5.RELEASE</springsource.util.version>
         <slf4j.version>1.6.1</slf4j.version>
+        <commons.io.version>2.3</commons.io.version>
     </properties>
-
 
     <repositories>
         <repository>
@@ -110,6 +110,21 @@
             <version>${springsource.util.version}</version>
             <scope>provided</scope>
         </dependency>
+        
+        <!-- Commons -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons.io.version}</version>
+        </dependency>
+        
+        <!-- Test -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -128,13 +143,13 @@
                         <Bundle-SymbolicName>${pom.groupId}.${pom.artifactId}</Bundle-SymbolicName>
                         <Bundle-Name>${project.name}</Bundle-Name>
                         <Bundle-Version>${pom.version}</Bundle-Version>
-                        <Bundle-Activator>tools.osgi.analyzer.internal.Activator</Bundle-Activator>
-                        <Private-Package>tools.osgi.analyzer.internal</Private-Package>
+                        <Bundle-Activator>tools.osgi.maven.integration.internal.Activator</Bundle-Activator>
+                        <Private-Package>tools.osgi.maven.integration.internal</Private-Package>
                         <Import-Package>
                             *
                         </Import-Package>
                         <Require-Capability>osgi.ee;filter:="(&amp;(osgi.ee=JavaSE)(version=1.6))"</Require-Capability>
-                        <Excport-Package>tools.osgi.analyzer.api*</Excport-Package>
+                        <Excport-Package>tools.osgi.maven.integration.api*</Excport-Package>
                     </instructions>
                 </configuration>
             </plugin>
