@@ -73,5 +73,6 @@
     </build>
     <modules>
         <module>osgi.analyzer</module>
+        <module>osgi.maven.integration</module>
     </modules>
 </project>

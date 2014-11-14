@@ -1,0 +1,152 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>tools.osgi</groupId>
+    <artifactId>osgi.maven.integration</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>bundle</packaging>
+
+    <name>OSGi Maven Integration</name>
+
+    <properties>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <springsource.util.version>2.0.5.RELEASE</springsource.util.version>
+        <slf4j.version>1.6.1</slf4j.version>
+    </properties>
+
+
+    <repositories>
+        <repository>
+            <name>Internal Nexus Repository</name>
+            <id>internal-nexus-repository</id>
+            <url>http://repo.pennassurancesoftware.com/repository/public</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <name>Internal Nexus Snapshot Repository</name>
+            <id>internal-nexus-snapshot-repository</id>
+            <url>http://repo.pennassurancesoftware.com/repository/public-snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>internal-nexus-release-repository</id>
+            <name>Internal Nexus Release Repository</name>
+            <url>http://repo.pennassurancesoftware.com/repository/internal/</url>
+            <uniqueVersion>false</uniqueVersion>
+        </repository>
+        <snapshotRepository>
+            <id>internal-nexus-snapshot-repository</id>
+            <name>Internal Nexus Snapshot Repository</name>
+            <url>http://repo.pennassurancesoftware.com/repository/snapshots/</url>
+            <uniqueVersion>false</uniqueVersion>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <dependencies>
+    
+        <!-- SLF4J -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>com.springsource.slf4j.api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>com.springsource.slf4j.log4j</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+
+        <!-- OSGi -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+            <version>4.3.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.compendium</artifactId>
+            <version>4.3.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- GoGo Shell -->
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.gogo.runtime</artifactId>
+            <version>0.10.0</version>
+        </dependency>
+
+        <!-- Spring Source OSGi Utils -->
+        <dependency>
+            <groupId>com.springsource.util</groupId>
+            <artifactId>com.springsource.util.parser.manifest</artifactId>
+            <version>${springsource.util.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.springsource.util</groupId>
+            <artifactId>com.springsource.util.common</artifactId>
+            <version>${springsource.util.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.springsource.util</groupId>
+            <artifactId>com.springsource.util.osgi</artifactId>
+            <version>${springsource.util.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <outputDirectory>bin/maven/classes</outputDirectory>
+        <testOutputDirectory>bin/maven/test-classes</testOutputDirectory>
+        <directory>dist</directory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>2.5.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <manifestLocation>${basedir}/bin/maven/classes/META-INF/</manifestLocation>
+                    <instructions>
+                        <Bundle-SymbolicName>${pom.groupId}.${pom.artifactId}</Bundle-SymbolicName>
+                        <Bundle-Name>${project.name}</Bundle-Name>
+                        <Bundle-Version>${pom.version}</Bundle-Version>
+                        <Bundle-Activator>tools.osgi.analyzer.internal.Activator</Bundle-Activator>
+                        <Private-Package>tools.osgi.analyzer.internal</Private-Package>
+                        <Import-Package>
+                            *
+                        </Import-Package>
+                        <Require-Capability>osgi.ee;filter:="(&amp;(osgi.ee=JavaSE)(version=1.6))"</Require-Capability>
+                        <Excport-Package>tools.osgi.analyzer.api*</Excport-Package>
+                    </instructions>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
