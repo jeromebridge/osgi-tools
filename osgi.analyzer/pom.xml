@@ -75,13 +75,11 @@
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.core</artifactId>
             <version>4.3.1</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.compendium</artifactId>
             <version>4.3.1</version>
-            <scope>provided</scope>
         </dependency>
 
         <!-- GoGo Shell -->
@@ -96,19 +94,16 @@
             <groupId>com.springsource.util</groupId>
             <artifactId>com.springsource.util.parser.manifest</artifactId>
             <version>${springsource.util.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.springsource.util</groupId>
             <artifactId>com.springsource.util.common</artifactId>
             <version>${springsource.util.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.springsource.util</groupId>
             <artifactId>com.springsource.util.osgi</artifactId>
             <version>${springsource.util.version}</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 
