@@ -121,6 +121,101 @@
             <version>${commons.logging.version}</version>
         </dependency>
 
+        <!-- Maven Embedder -->
+        <dependency>
+            <groupId>org.jenkins-ci.lib</groupId>
+            <artifactId>lib-jenkins-maven-embedder</artifactId>
+            <version>3.11</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.maven</groupId>
+                    <artifactId>maven-artifact</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.maven</groupId>
+                    <artifactId>maven-compat</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.maven</groupId>
+                    <artifactId>maven-embedder</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.maven</groupId>
+                    <artifactId>maven-aether-provider</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.sisu</groupId>
+                    <artifactId>org.eclipse.sisu.plexus</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.aether</groupId>
+                    <artifactId>aether-connector-wagon</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.aether</groupId>
+                    <artifactId>aether-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.aether</groupId>
+                    <artifactId>aether-impl</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.aether</groupId>
+                    <artifactId>aether-spi</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.aether</groupId>
+                    <artifactId>aether-util</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.maven.wagon</groupId>
+                    <artifactId>wagon-provider-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-core</artifactId>
+            <version>${mavenVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-compat</artifactId>
+            <version>${mavenVersion}</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>wagon-provider-api</artifactId>
+                    <groupId>org.apache.maven.wagon</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-embedder</artifactId>
+            <version>${mavenVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-aether-provider</artifactId>
+            <version>${mavenVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.aether</groupId>
+            <artifactId>aether-connector-wagon</artifactId>
+            <version>0.9.0.M2</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>wagon-provider-api</artifactId>
+                    <groupId>org.apache.maven.wagon</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven.wagon</groupId>
+            <artifactId>wagon-provider-api</artifactId>
+            <version>2.4</version>
+        </dependency>
+
         <!-- Eclise Aether -->
         <dependency>
             <groupId>org.eclipse.aether</groupId>
@@ -174,17 +269,6 @@
             <version>4.2.5</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-aether-provider</artifactId>
-            <version>${mavenVersion}</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>maven-model</artifactId>
-                    <groupId>org.apache.maven</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
             <groupId>org.eclipse.aether</groupId>
             <artifactId>org.eclipse.aether.maven</artifactId>
             <version>3.1.0.v20140706-2237</version>
@@ -200,6 +284,11 @@
                     <artifactId>cdi-api</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>javax.enterprise</groupId>
+            <artifactId>cdi-api</artifactId>
+            <version>1.2</version>
         </dependency>
         <dependency>
             <groupId>org.sonatype.sisu</groupId>
@@ -237,6 +326,30 @@
             <version>1.0.0</version>
         </dependency>
 
+        <!-- Bundle Repository -->
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.bundlerepository</artifactId>
+            <version>1.6.6</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>org.osgi.core</artifactId>
+                    <groupId>org.osgi</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.utils</artifactId>
+            <version>1.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>org.osgi.core</artifactId>
+                    <groupId>org.osgi</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>junit</groupId>
@@ -258,17 +371,70 @@
                 <extensions>true</extensions>
                 <configuration>
                     <manifestLocation>${basedir}/bin/maven/classes/META-INF/</manifestLocation>
+                    <unpackBundle>true</unpackBundle>
                     <instructions>
                         <Bundle-SymbolicName>${pom.groupId}.${pom.artifactId}</Bundle-SymbolicName>
                         <Bundle-Name>${project.name}</Bundle-Name>
                         <Bundle-Version>${pom.version}</Bundle-Version>
                         <Bundle-Activator>tools.osgi.maven.integration.internal.Activator</Bundle-Activator>
-                        <Private-Package>tools.osgi.maven.integration.internal</Private-Package>
+                        <Private-Package>tools.osgi.maven.integration.internal.*</Private-Package>
                         <Import-Package>
+                            junit.framework.*;resolution:=optional,
+                            org.apache.maven.model.*;resolution:=optional,
+                            org.apache.maven.artifact.*;resolution:=optional,
+                            org.apache.maven.cli.*;resolution:=optional,
+                            org.apache.maven.settings.merge.*;resolution:=optional,
+                            org.apache.maven.wagon.events.*;resolution:=optional,
+                            org.apache.commons.cli.*;resolution:=optional,
+                            org.apache.tools.ant.*;resolution:=optional,
+                            org.codehaus.plexus.component.repository.exception.*,
+                            org.codehaus.plexus.component.annotations.*;resolution:=optional,
+                            org.codehaus.plexus.util.*;resolution:=optional,
+                            org.sonatype.plexus.components.cipher.*;resolution:=optional,
+                            org.sonatype.plexus.components.sec.dispatcher.*;resolution:=optional,
+                            hudson.maven.*;resolution:=optional,
+                            org.eclipse.aether.util.repository.layout.*;resolution:=optional,
+                            org.apache.maven.wagon.*;resolution:=optional,
                             *
                         </Import-Package>
                         <Require-Capability>osgi.ee;filter:="(&amp;(osgi.ee=JavaSE)(version=1.6))"</Require-Capability>
                         <Excport-Package>tools.osgi.maven.integration.api*</Excport-Package>
+                        <Embed-Dependency>
+                            aether-transport-http,
+                            aether-transport-file,
+                            aether-connector-basic,
+                            slf4j-log4j12,
+                            slf4j-api,
+                            wagon-provider-api,
+                            aether-util,
+                            aether-spi,
+                            aether-impl,
+                            aether-api,
+                            aether-connector-wagon,
+                            maven-aether-provider,
+                            maven-model,
+                            maven-compat,
+                            ant,
+                            maven-settings-builder,
+                            maven-settings,
+                            org.eclipse.sisu.plexus,
+                            plexus-component-annotations,
+                            plexus-sec-dispatcher,
+                            plexus-cipher,
+                            commons-cli,
+                            maven-embedder,
+                            lib-jenkins-maven-embedder,
+                            plexus-classworlds,
+                            maven-model-builder,
+                            maven-artifact,
+                            maven-repository-metadata,
+                            maven-core,
+                            maven-plugin-api,
+                            plexus-utils,
+                            plexus-interpolation
+                        </Embed-Dependency>
+                        <Embed-Directory>jars</Embed-Directory>
+                        <Embed-Transitive>true</Embed-Transitive>
                     </instructions>
                 </configuration>
             </plugin>
