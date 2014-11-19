@@ -124,47 +124,58 @@ public class OsgiMavenIntegrationService {
          }
 
          for( MavenProjectHolder holder : mavenProjects ) {
-            // Assembly
-            final File classesFolder = new File( holder.getProject().getBuild().getOutputDirectory() );
-            if( ObrUtils.isOsgiBundle( classesFolder ) ) {
-               final Resource projectResource = addAssemblyResource( resources, classesFolder.getAbsolutePath() );
-               if( projectResource == null ) {
-                  LOG.warn( String.format( "Unable to add project: %s to OBR", classesFolder ) );
-                  dependenciesNotAdded.add( classesFolder );
-               }
-               else {
-                  LOG.info( String.format( "Add project: %s to OBR", classesFolder ) );
-                  dependenciesAdded.add( classesFolder );
-               }
-
-               // Dependencies
-               final RepositorySystem system = Booter.newRepositorySystem();
-               final RepositorySystemSession session = Booter.newRepositorySystemSession( system, new LocalRepository( holder.getEmbedder().getLocalRepositoryPath() ) );
-               for( Dependency dependency : holder.getProject().getDependencies() ) {
-                  org.eclipse.aether.artifact.Artifact filter = new org.eclipse.aether.artifact.DefaultArtifact( dependency.getGroupId(), dependency.getArtifactId(), dependency.getClassifier(), dependency.getType(), dependency.getVersion() );
-                  final DependencyFilter classpathFlter = DependencyFilterUtils.classpathFilter( JavaScopes.RUNTIME );
-                  final CollectRequest collectRequest = new CollectRequest();
-                  collectRequest.setRoot( new org.eclipse.aether.graph.Dependency( filter, JavaScopes.RUNTIME ) );
-                  collectRequest.setRepositories( Booter.newRepositories( system, session ) );
-                  for( ArtifactRepository remoteRepository : holder.getProject().getRemoteArtifactRepositories() ) {
-                     collectRequest.addRepository( new RemoteRepository.Builder( remoteRepository.getId(), "default", remoteRepository.getUrl() ).build() );
+            try {
+               // Assembly
+               final File classesFolder = new File( holder.getProject().getBuild().getOutputDirectory() );
+               if( ObrUtils.isOsgiBundle( classesFolder ) ) {
+                  final Resource projectResource = addAssemblyResource( resources, classesFolder.getAbsolutePath() );
+                  if( projectResource == null ) {
+                     LOG.warn( String.format( "Unable to add project: %s to OBR", classesFolder ) );
+                     dependenciesNotAdded.add( classesFolder );
                   }
-                  final DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, classpathFlter );
-                  final List<ArtifactResult> artifactResults = system.resolveDependencies( session, dependencyRequest ).getArtifactResults();
-                  for( ArtifactResult artifactResult : artifactResults ) {
-                     if( !containsArtifact( mavenProjects, artifactResult ) ) {
-                        final Resource resource = addJarResource( resources, artifactResult.getArtifact().getFile() );
-                        if( resource == null ) {
-                           LOG.warn( String.format( "Unable to add dependency: %s to OBR", dependency ) );
-                           dependenciesNotAdded.add( artifactResult.getArtifact().getFile() );
+                  else {
+                     LOG.info( String.format( "Add project: %s to OBR", classesFolder ) );
+                     dependenciesAdded.add( classesFolder );
+                  }
+
+                  // Dependencies
+                  final RepositorySystem system = Booter.newRepositorySystem();
+                  final RepositorySystemSession session = Booter.newRepositorySystemSession( system, new LocalRepository( holder.getEmbedder().getLocalRepositoryPath() ) );
+                  for( Dependency dependency : holder.getProject().getDependencies() ) {
+                     try {
+                        org.eclipse.aether.artifact.Artifact filter = new org.eclipse.aether.artifact.DefaultArtifact( dependency.getGroupId(), dependency.getArtifactId(), dependency.getClassifier(), dependency.getType(), dependency.getVersion() );
+                        final DependencyFilter classpathFlter = DependencyFilterUtils.classpathFilter( JavaScopes.RUNTIME );
+                        final CollectRequest collectRequest = new CollectRequest();
+                        collectRequest.setRoot( new org.eclipse.aether.graph.Dependency( filter, JavaScopes.RUNTIME ) );
+                        collectRequest.setRepositories( Booter.newRepositories( system, session ) );
+                        for( ArtifactRepository remoteRepository : holder.getProject().getRemoteArtifactRepositories() ) {
+                           collectRequest.addRepository( new RemoteRepository.Builder( remoteRepository.getId(), "default", remoteRepository.getUrl() ).build() );
                         }
-                        else {
-                           LOG.info( String.format( "Add dependency: %s to OBR", dependency ) );
-                           dependenciesAdded.add( artifactResult.getArtifact().getFile() );
+                        final DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, classpathFlter );
+                        final List<ArtifactResult> artifactResults = system.resolveDependencies( session, dependencyRequest ).getArtifactResults();
+                        for( ArtifactResult artifactResult : artifactResults ) {
+                           if( !containsArtifact( mavenProjects, artifactResult ) ) {
+                              final Resource resource = addJarResource( resources, artifactResult.getArtifact().getFile() );
+                              if( resource == null ) {
+                                 LOG.warn( String.format( "Unable to add dependency: %s to OBR", dependency ) );
+                                 dependenciesNotAdded.add( artifactResult.getArtifact().getFile() );
+                              }
+                              else {
+                                 LOG.info( String.format( "Add dependency: %s to OBR", dependency ) );
+                                 dependenciesAdded.add( artifactResult.getArtifact().getFile() );
+                              }
+                           }
                         }
                      }
+                     catch( Throwable exception ) {
+                        throw new RuntimeException( String.format( "Error resolving dependency: %s", dependency ), exception );
+                     }
+
                   }
                }
+            }
+            catch( Throwable exception ) {
+               throw new RuntimeException( String.format( "Error adding project: %s to OBR", holder.getProject().getArtifactId() ), exception );
             }
          }
       }
