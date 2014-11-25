@@ -132,7 +132,7 @@ public class ConsoleTransferListener
 
       if( !( event.getException() instanceof MetadataNotFoundException ) )
       {
-         event.getException().printStackTrace( out );
+         // event.getException().printStackTrace( out );
       }
    }
 
