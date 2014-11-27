@@ -26,7 +26,7 @@ public class Booter {
       final DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
       // LocalRepository localRepo = new LocalRepository( "target/local-repo" );
       session.setLocalRepositoryManager( system.newLocalRepositoryManager( session, localRepo ) );
-      session.setTransferListener( new ConsoleTransferListener() );
+      // session.setTransferListener( new ConsoleTransferListener() );
       // session.setRepositoryListener( new ConsoleRepositoryListener() );
       // uncomment to generate dirty trees
       // session.setDependencyGraphTransformer( null );

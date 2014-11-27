@@ -26,15 +26,18 @@ public class ObrUtils {
          if( !manifestFile.exists() ) {
             throw new IllegalArgumentException( "The specified folder is not a valid bundle (can't read manifest): " + bundleFolder );
          }
+         @SuppressWarnings("unused")
          final Manifest manifest = new Manifest( new FileInputStream( manifestFile ) );
-         final Resource result = dataModelHelper.createResource( manifest.getMainAttributes() );
+
+         // final Resource result = dataModelHelper.createResource( manifest.getMainAttributes() );
+         final Resource result = dataModelHelper.createResource( uri.toURL() );
          //         if( result != null ) {
          //            result.put( Resource.SIZE, Long.toString( getFolderSize( bundleFolder ) ), null );
          //            result.put( Resource.URI, uri.toASCIIString(), null );
          //         }
          return result;
       }
-      catch( Exception exception ) {
+      catch( Throwable exception ) {
          throw new RuntimeException( String.format( "Error creating OBR resource for folder: %s", bundleFolder.getAbsolutePath() ), exception );
       }
    }
