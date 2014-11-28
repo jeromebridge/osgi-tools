@@ -37,6 +37,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleImportRequirement;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.ObrUtils;
 import tools.osgi.maven.integration.internal.aether.Booter;
@@ -74,13 +77,8 @@ public class OsgiMavenIntegrationService {
 
          // Load Maven Projects
          final List<MavenProjectHolder> mavenProjects = getMavenProjects( workspaceFolder, projectFilter );
-         
-
-         // Create Deployment Plan To Resolve Required Bundles From Maven Projects
-         // 1. Get All Imported Packages (Resolve Maven Project Dependency Bundles)
-         // 2. Determine If Bundle already exists to satisfy it
-         //    3. If none; determine if a maven dependency that is a bundle satisfies it
-         //        4. If none; mark as not resolved
+         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects );
+         printDeploymentPlan( deploymentPlan );
 
          // Install Maven Project Bundles
          final List<URI> mavenProjectBundleUris = getMavenProjectBundleUris( mavenProjects );
@@ -133,6 +131,17 @@ public class OsgiMavenIntegrationService {
       }
       catch( Throwable exception ) {
          exception.printStackTrace();
+      }
+   }
+
+   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
+      System.out.println( "Deployment Plan" );
+      System.out.println( "===============================================" );
+      for( MavenProjectBundleDeploymentPlan projectPlan : deploymentPlan.getProjectPlans() ) {
+         System.out.println( String.format( "Maven Project: %s", projectPlan.getMavenProjectHolder().getProject().getArtifactId() ) );
+         for( BundleImportRequirement importRequirement : projectPlan.getImportRequirements() ) {
+            System.out.println( String.format( "   Import Requirement(%s): %s(%s)", importRequirement.getImportedPackage().getPackageName(), importRequirement.getResolveType().name(), importRequirement.getResolveDescription() ) );
+         }
       }
    }
 
