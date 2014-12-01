@@ -7,6 +7,7 @@ import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Dependency;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.graph.DependencyFilter;
 import org.eclipse.aether.repository.LocalRepository;
@@ -20,8 +21,8 @@ import tools.osgi.maven.integration.internal.aether.Booter;
 
 public class MavenUtils {
 
-   public static List<ArtifactResult> resolveDependencies( MavenProjectHolder holder ) {
-      final List<ArtifactResult> result = new ArrayList<ArtifactResult>();
+   public static List<Artifact> resolveDependencies( MavenProjectHolder holder ) {
+      final List<Artifact> result = new ArrayList<Artifact>();
       final RepositorySystem system = Booter.newRepositorySystem();
       final RepositorySystemSession session = Booter.newRepositorySystemSession( system, new LocalRepository( holder.getEmbedder().getLocalRepositoryPath() ) );
       for( Dependency dependency : holder.getProject().getDependencies() ) {
@@ -36,7 +37,9 @@ public class MavenUtils {
             }
             final DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, classpathFlter );
             final List<ArtifactResult> artifactResults = system.resolveDependencies( session, dependencyRequest ).getArtifactResults();
-            result.addAll( artifactResults );
+            for( ArtifactResult artifactResult : artifactResults ) {
+               result.add( artifactResult.getArtifact() );
+            }
          }
          catch( Throwable exception ) {
             throw new RuntimeException( String.format( "Error resolving dependency: %s", dependency ), exception );

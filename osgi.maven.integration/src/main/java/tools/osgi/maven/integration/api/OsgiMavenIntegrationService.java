@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleImportRequirement;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.ObrUtils;
@@ -140,6 +141,12 @@ public class OsgiMavenIntegrationService {
       for( MavenProjectBundleDeploymentPlan projectPlan : deploymentPlan.getProjectPlans() ) {
          System.out.println( String.format( "Maven Project: %s", projectPlan.getMavenProjectHolder().getProject().getArtifactId() ) );
          for( BundleImportRequirement importRequirement : projectPlan.getImportRequirements() ) {
+            System.out.println( String.format( "   Import Requirement(%s): %s(%s)", importRequirement.getImportedPackage().getPackageName(), importRequirement.getResolveType().name(), importRequirement.getResolveDescription() ) );
+         }
+      }
+      for( MavenDependencyBundleDeploymentPlan dependencyPlan : deploymentPlan.getDependencyPlans() ) {
+         System.out.println( String.format( "Maven Dependency: %s", dependencyPlan.getDependency().getArtifactId() ) );
+         for( BundleImportRequirement importRequirement : dependencyPlan.getImportRequirements() ) {
             System.out.println( String.format( "   Import Requirement(%s): %s(%s)", importRequirement.getImportedPackage().getPackageName(), importRequirement.getResolveType().name(), importRequirement.getResolveDescription() ) );
          }
       }

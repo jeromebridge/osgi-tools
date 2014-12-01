@@ -28,4 +28,11 @@ public class MavenProjectHolder {
    public void setProject( MavenProject project ) {
       this.project = project;
    }
+
+   @Override
+   public int hashCode() {
+      int hash = 17;
+      hash = 31 * hash + project.hashCode();
+      return hash;
+   }
 }

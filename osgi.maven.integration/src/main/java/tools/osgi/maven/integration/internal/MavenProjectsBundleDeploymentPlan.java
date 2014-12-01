@@ -5,12 +5,16 @@ import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 
 import org.apache.maven.project.MavenProject;
-import org.eclipse.aether.resolution.ArtifactResult;
+import org.eclipse.aether.artifact.Artifact;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 
@@ -25,7 +29,7 @@ public class MavenProjectsBundleDeploymentPlan {
    public static class BundleImportRequirement {
       private Bundle existingBundle;
       private ImportedPackage importedPackage;
-      private ArtifactResult mavenDependency;
+      private Artifact mavenDependency;
       private MavenProjectHolder mavenProject;
       private BundleImportRequirementResolveType resolveType = BundleImportRequirementResolveType.None;
 
@@ -39,6 +43,10 @@ public class MavenProjectsBundleDeploymentPlan {
 
       public ImportedPackage getImportedPackage() {
          return importedPackage;
+      }
+
+      public Artifact getMavenDependency() {
+         return mavenDependency;
       }
 
       public MavenProjectHolder getMavenProject() {
@@ -55,7 +63,7 @@ public class MavenProjectsBundleDeploymentPlan {
             result = mavenProject != null ? mavenProject.getProject().getArtifactId() : "";
             break;
          case MavenDependency:
-            result = mavenDependency != null ? mavenDependency.getArtifact().getArtifactId() : "";
+            result = mavenDependency != null ? mavenDependency.getArtifactId() : "";
             break;
          case None:
          }
@@ -75,7 +83,7 @@ public class MavenProjectsBundleDeploymentPlan {
          setResolveType( BundleImportRequirementResolveType.ExistingBundle );
       }
 
-      public void setMavenDependency( ArtifactResult existing ) {
+      public void setMavenDependency( Artifact existing ) {
          mavenDependency = existing;
          setResolveType( BundleImportRequirementResolveType.MavenDependency );
       }
@@ -99,6 +107,31 @@ public class MavenProjectsBundleDeploymentPlan {
       MavenProject,
       /** No strategy to resolve the import could be found */
       None,
+   }
+
+   public static class MavenDependencyBundleDeploymentPlan {
+      private Artifact dependency;
+      private List<BundleImportRequirement> importRequirements = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
+
+      public MavenDependencyBundleDeploymentPlan( Artifact dependency ) {
+         this.dependency = dependency;
+      }
+
+      public void addBundleImportRequirement( BundleImportRequirement requirement ) {
+         importRequirements.add( requirement );
+      }
+
+      public Artifact getDependency() {
+         return dependency;
+      }
+
+      public List<BundleImportRequirement> getImportRequirements() {
+         return importRequirements;
+      }
+
+      public void setImportRequirements( List<BundleImportRequirement> importRequirements ) {
+         this.importRequirements = importRequirements;
+      }
    }
 
    public static class MavenProjectBundleDeploymentPlan {
@@ -127,13 +160,19 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private BundleContext bundleContext;
+   private List<MavenDependencyBundleDeploymentPlan> dependencyPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan>();
    private List<MavenProjectHolder> mavenProjects = new ArrayList<MavenProjectHolder>();
    private List<MavenProjectBundleDeploymentPlan> projectPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan>();
+   private Map<MavenProjectHolder, List<Artifact>> resolvedMavenDependencies = new HashMap<MavenProjectHolder, List<Artifact>>();
 
    public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects ) {
       this.bundleContext = bundleContext;
       this.mavenProjects = new ArrayList<MavenProjectHolder>( mavenProjects );
       init();
+   }
+
+   public List<MavenDependencyBundleDeploymentPlan> getDependencyPlans() {
+      return dependencyPlans;
    }
 
    public List<MavenProjectHolder> getMavenProjects() {
@@ -161,8 +200,14 @@ public class MavenProjectsBundleDeploymentPlan {
       return matches.isEmpty() ? null : matches.get( 0 );
    }
 
-   private ArtifactResult findBestMatchMavenDependencyThatSatisfiesImport( MavenProjectHolder holder, ImportedPackage importedPackage ) {
-      final List<ArtifactResult> matches = findMavenDependenciesThatSatisfyImport( holder, importedPackage );
+   private Artifact findBestMatchMavenDependencyThatSatisfiesImport( ImportedPackage importedPackage ) {
+      final List<Artifact> matches = findMavenDependenciesThatSatisfyImport( importedPackage );
+      return matches.isEmpty() ? null : matches.get( 0 );
+   }
+
+   @SuppressWarnings("unused")
+   private Artifact findBestMatchMavenDependencyThatSatisfiesImport( MavenProjectHolder holder, ImportedPackage importedPackage ) {
+      final List<Artifact> matches = findMavenDependenciesThatSatisfyImport( holder, importedPackage );
       return matches.isEmpty() ? null : matches.get( 0 );
    }
 
@@ -181,17 +226,26 @@ public class MavenProjectsBundleDeploymentPlan {
       return result;
    }
 
-   private List<ArtifactResult> findMavenDependenciesThatSatisfyImport( MavenProjectHolder holder, ImportedPackage importedPackage ) {
-      try {
-         final List<ArtifactResult> result = new ArrayList<ArtifactResult>();
-         final List<ArtifactResult> dependencies = MavenUtils.resolveDependencies( holder );
-         for( ArtifactResult dependency : dependencies ) {
-            final BundleManifest manifest = getBundleManifest( dependency );
-            if( manifest != null && containsExportForImport( manifest, importedPackage ) ) {
-               result.add( dependency );
-            }
+   private List<Artifact> findMavenDependenciesThatSatisfyImport( ImportedPackage importedPackage ) {
+      final List<Artifact> dependencies = resolveAllMavenDependencies();
+      return findMavenDependenciesThatSatisfyImport( dependencies, importedPackage );
+   }
+
+   private List<Artifact> findMavenDependenciesThatSatisfyImport( List<Artifact> dependencies, ImportedPackage importedPackage ) {
+      final List<Artifact> result = new ArrayList<Artifact>();
+      for( Artifact dependency : dependencies ) {
+         final BundleManifest manifest = getBundleManifest( dependency );
+         if( manifest != null && containsExportForImport( manifest, importedPackage ) ) {
+            result.add( dependency );
          }
-         return result;
+      }
+      return result;
+   }
+
+   private List<Artifact> findMavenDependenciesThatSatisfyImport( MavenProjectHolder holder, ImportedPackage importedPackage ) {
+      try {
+         final List<Artifact> dependencies = resolveMavenDependencies( holder );
+         return findMavenDependenciesThatSatisfyImport( dependencies, importedPackage );
       }
       catch( Exception exception ) {
          throw new RuntimeException( String.format( "Error finding dependencies on maven project: %s", holder.getProject().getArtifactId() ), exception );
@@ -209,14 +263,10 @@ public class MavenProjectsBundleDeploymentPlan {
       return result;
    }
 
-   private BundleManifest getBundleManifest( Bundle bundle ) {
-      return BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
-   }
-
-   private BundleManifest getBundleManifest( ArtifactResult dependency ) {
+   private BundleManifest getBundleManifest( Artifact dependency ) {
       try {
          BundleManifest result = null;
-         final JarFile jar = new JarFile( dependency.getArtifact().getFile() );
+         final JarFile jar = new JarFile( dependency.getFile() );
          final ZipEntry manifestEntry = jar.getEntry( JarFile.MANIFEST_NAME );
          if( manifestEntry != null ) {
             final Reader reader = new InputStreamReader( jar.getInputStream( manifestEntry ) );
@@ -228,6 +278,10 @@ public class MavenProjectsBundleDeploymentPlan {
       catch( Exception exception ) {
          throw new RuntimeException( String.format( "Error getting bundle manifest for dependency: %s", dependency ), exception );
       }
+   }
+
+   private BundleManifest getBundleManifest( Bundle bundle ) {
+      return BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
    }
 
    private BundleManifest getBundleManifest( MavenProject project ) {
@@ -269,7 +323,39 @@ public class MavenProjectsBundleDeploymentPlan {
       return new File( project.getBuild().getOutputDirectory() + File.separator + "META-INF/MANIFEST.MF" );
    }
 
+   private List<Artifact> getMavenDependenciesFromProjectPlans() {
+      final Set<Artifact> result = new HashSet<Artifact>();
+      for( MavenProjectBundleDeploymentPlan projectPlan : projectPlans ) {
+         for( BundleImportRequirement requirement : projectPlan.getImportRequirements() ) {
+            if( BundleImportRequirementResolveType.MavenDependency.equals( requirement.getResolveType() ) ) {
+               result.add( requirement.getMavenDependency() );
+            }
+         }
+      }
+      return new ArrayList<Artifact>( result );
+   }
+
    private void init() {
+      initProjectPlans();
+      initDependencyPlans();
+   }
+
+   private void initDependencyPlans() {
+      dependencyPlans.clear();
+      final List<Artifact> dependencies = getMavenDependenciesFromProjectPlans();
+      for( Artifact dependency : dependencies ) {
+         final MavenDependencyBundleDeploymentPlan plan = new MavenDependencyBundleDeploymentPlan( dependency );
+         final BundleManifest manifest = getBundleManifest( dependency );
+         if( manifest == null ) {
+            throw new RuntimeException( String.format( "No manifest could be loaded for Maven Dependency: %s", dependency.getArtifactId() ) );
+         }
+         final List<BundleImportRequirement> requirements = resolveBundleImportRequirements( manifest );
+         plan.setImportRequirements( requirements );
+         dependencyPlans.add( plan );
+      }
+   }
+
+   private void initProjectPlans() {
       projectPlans.clear();
       for( MavenProjectHolder holder : mavenProjects ) {
          final MavenProjectBundleDeploymentPlan plan = new MavenProjectBundleDeploymentPlan( holder );
@@ -277,41 +363,58 @@ public class MavenProjectsBundleDeploymentPlan {
          if( manifest == null ) {
             throw new RuntimeException( String.format( "No manifest could be loaded for Maven Project: %s", holder.getProject().getArtifactId() ) );
          }
-         for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
-            final BundleImportRequirement requirement = new BundleImportRequirement( importedPackage );
-
-            // Maven Project
-            if( !requirement.isResolved() ) {
-               final MavenProjectHolder existing = findBestMatchMavenProjectThatSatisfiesImport( importedPackage );
-               if( existing != null ) {
-                  requirement.setMavenProject( existing );
-               }
-            }
-
-            // Existing Bundle?
-            if( !requirement.isResolved() ) {
-               final Bundle existing = findBestMatchBundleThatSatisfiesImport( importedPackage );
-               if( existing != null ) {
-                  requirement.setExistingBundle( existing );
-               }
-            }
-
-            // Maven Dependency
-            if( !requirement.isResolved() ) {
-               final ArtifactResult existing = findBestMatchMavenDependencyThatSatisfiesImport( holder, importedPackage );
-               if( existing != null ) {
-                  requirement.setMavenDependency( existing );
-               }
-            }
-            plan.addBundleImportRequirement( requirement );
-         }
+         final List<BundleImportRequirement> requirements = resolveBundleImportRequirements( manifest );
+         plan.setImportRequirements( requirements );
          projectPlans.add( plan );
       }
+   }
 
-      // 1. Get All Imported Packages (Resolve Maven Project Dependency Bundles)
-      // 2. Determine If Bundle already exists to satisfy it
-      //    3. If none; determine if a maven dependency that is a bundle satisfies it
-      //        4. If none; mark as not resolved
+   private List<Artifact> resolveAllMavenDependencies() {
+      final Set<Artifact> result = new HashSet<Artifact>();
+      for( MavenProjectHolder holder : mavenProjects ) {
+         result.addAll( resolveMavenDependencies( holder ) );
+      }
+      return new ArrayList<Artifact>( result );
+   }
 
+   private List<BundleImportRequirement> resolveBundleImportRequirements( BundleManifest manifest ) {
+      resolveAllMavenDependencies();
+      final List<BundleImportRequirement> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
+      for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
+         final BundleImportRequirement requirement = new BundleImportRequirement( importedPackage );
+
+         // Maven Project
+         if( !requirement.isResolved() ) {
+            final MavenProjectHolder existing = findBestMatchMavenProjectThatSatisfiesImport( importedPackage );
+            if( existing != null ) {
+               requirement.setMavenProject( existing );
+            }
+         }
+
+         // Existing Bundle?
+         if( !requirement.isResolved() ) {
+            final Bundle existing = findBestMatchBundleThatSatisfiesImport( importedPackage );
+            if( existing != null ) {
+               requirement.setExistingBundle( existing );
+            }
+         }
+
+         // Maven Dependency
+         if( !requirement.isResolved() ) {
+            final Artifact existing = findBestMatchMavenDependencyThatSatisfiesImport( importedPackage );
+            if( existing != null ) {
+               requirement.setMavenDependency( existing );
+            }
+         }
+         result.add( requirement );
+      }
+      return result;
+   }
+
+   private List<Artifact> resolveMavenDependencies( MavenProjectHolder holder ) {
+      if( !resolvedMavenDependencies.containsKey( holder ) ) {
+         resolvedMavenDependencies.put( holder, MavenUtils.resolveDependencies( holder ) );
+      }
+      return resolvedMavenDependencies.get( holder );
    }
 }
