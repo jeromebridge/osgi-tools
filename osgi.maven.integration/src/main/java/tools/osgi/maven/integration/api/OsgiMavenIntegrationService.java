@@ -15,6 +15,7 @@ import org.apache.felix.bundlerepository.Repository;
 import org.apache.felix.bundlerepository.RepositoryAdmin;
 import org.apache.felix.bundlerepository.Resource;
 import org.apache.felix.service.command.Descriptor;
+import org.apache.felix.service.command.Parameter;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleImportRequirement;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.ObrUtils;
 import tools.osgi.maven.integration.internal.aether.Booter;
@@ -54,6 +56,10 @@ public class OsgiMavenIntegrationService {
 
    @Descriptor("Analyzes the state of the OSGi container")
    public void deploy(
+         @Descriptor("Print verbose messages") @Parameter(
+               names = { "-v", "--verbose" },
+               presentValue = "true",
+               absentValue = "false") boolean verbose,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
       try {
@@ -77,24 +83,40 @@ public class OsgiMavenIntegrationService {
          // Load Maven Projects
          final List<MavenProjectHolder> mavenProjects = getMavenProjects( workspaceFolder, projectFilter );
          final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects );
-         printDeploymentPlan( deploymentPlan );
+         printDeploymentPlan( deploymentPlan, verbose );
 
-         // Install Maven Project Bundles
-         final List<URI> mavenProjectBundleUris = getMavenProjectBundleUris( mavenProjects );
-         final List<Bundle> projectBundles = new ArrayList<Bundle>();
-         for( URI uri : mavenProjectBundleUris ) {
-            try {
-               final Bundle bundle = bundleContext.installBundle( uri.toURL().toExternalForm() );
-               projectBundles.add( bundle );
-               System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
-            }
-            catch( Exception exception ) {
-               System.out.println( "Failed to install: " + uri + " Reason: " + exception.getMessage() );
+         // Install Plan
+         final List<Bundle> installedBundles = new ArrayList<Bundle>();
+         if( deploymentPlan.isResolved() ) {
+            for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
+               try {
+                  final Bundle bundle = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
+                  installedBundles.add( bundle );
+                  System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+               }
+               catch( Exception exception ) {
+                  System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );
+               }
             }
          }
 
+         //         // Install Maven Project Bundles
+         //         final List<URI> mavenProjectBundleUris = getMavenProjectBundleUris( mavenProjects );
+         //         final List<Bundle> installedBundles = new ArrayList<Bundle>();
+         //         for( URI uri : mavenProjectBundleUris ) {
+         //            try {
+         //               final Bundle bundle = bundleContext.installBundle( uri.toURL().toExternalForm() );
+         //               installedBundles.add( bundle );
+         //               System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+         //            }
+         //            catch( Exception exception ) {
+         //               System.out.println( "Failed to install: " + uri + " Reason: " + exception.getMessage() );
+         //            }
+         //         }
+
+         // Resolve
          final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
-         if( !fw.resolveBundles( projectBundles ) ) {
+         if( !fw.resolveBundles( installedBundles ) ) {
             System.out.println( "Maven Projects Not Resolved" );
 
          }
@@ -133,17 +155,31 @@ public class OsgiMavenIntegrationService {
       }
    }
 
-   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
+   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
       System.out.println( "Deployment Plan" );
       System.out.println( "===============================================" );
       for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
          System.out.println( plan );
-         //         for( BundleImportRequirement importRequirement : plan.getImportRequirements() ) {
-         //            System.out.println( "   " + importRequirement );
-         //         }
+         if( verbose ) {
+            for( BundleImportRequirement importRequirement : plan.getImportRequirements() ) {
+               System.out.println( "   " + importRequirement );
+            }
+         }
+      }
+      System.out.println( "" );
+      if( !deploymentPlan.isResolved() ) {
+         System.out.println( "Unresolved" );
+         System.out.println( "===============================================" );
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans() ) {
+            System.out.println( plan );
+            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements() ) {
+               System.out.println( "   " + importRequirement );
+            }
+         }
       }
    }
 
+   @SuppressWarnings("unused")
    private List<URI> getMavenProjectBundleUris( List<MavenProjectHolder> mavenProjects ) {
       final List<URI> result = new ArrayList<URI>();
       for( MavenProjectHolder holder : mavenProjects ) {

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,8 +34,24 @@ public class MavenProjectsBundleDeploymentPlan {
          importRequirements.add( requirement );
       }
 
+      public abstract URI getBundleUri();
+
       public List<BundleImportRequirement> getImportRequirements() {
          return importRequirements;
+      }
+
+      public List<BundleImportRequirement> getUnresolvedImportRequirements() {
+         final List<BundleImportRequirement> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
+         for( BundleImportRequirement requirement : importRequirements ) {
+            if( !requirement.isResolved() ) {
+               result.add( requirement );
+            }
+         }
+         return result;
+      }
+
+      public boolean isResolved() {
+         return getUnresolvedImportRequirements().isEmpty();
       }
 
       public void setImportRequirements( List<BundleImportRequirement> importRequirements ) {
@@ -51,11 +68,6 @@ public class MavenProjectsBundleDeploymentPlan {
 
       public BundleImportRequirement( ImportedPackage importedPackage ) {
          this.importedPackage = importedPackage;
-      }
-
-      @Override
-      public String toString() {
-         return String.format( "Import Requirement(%s): %s(%s)", getImportedPackage().getPackageName(), getResolveType().name(), getResolveDescription() );
       }
 
       @Override
@@ -118,6 +130,25 @@ public class MavenProjectsBundleDeploymentPlan {
          return !BundleImportRequirementResolveType.None.equals( resolveType );
       }
 
+      public boolean matches( AbstractBundleDeploymentPlan otherPlan ) {
+         boolean result = true;
+         switch( resolveType ) {
+         case ExistingBundle:
+            result = false;
+            break;
+         case MavenProject:
+            result = result && mavenProject != null && otherPlan instanceof MavenProjectBundleDeploymentPlan && mavenProject.equals( ( ( MavenProjectBundleDeploymentPlan )otherPlan ).getMavenProjectHolder() );
+            break;
+         case MavenDependency:
+            result = result && mavenDependency != null && otherPlan instanceof MavenDependencyBundleDeploymentPlan && mavenDependency.equals( ( ( MavenDependencyBundleDeploymentPlan )otherPlan ).getDependency() );
+            break;
+         case None:
+            result = false;
+            break;
+         }
+         return result;
+      }
+
       public void setExistingBundle( Bundle existingBundle ) {
          this.existingBundle = existingBundle;
          setResolveType( BundleImportRequirementResolveType.ExistingBundle );
@@ -137,23 +168,9 @@ public class MavenProjectsBundleDeploymentPlan {
          this.resolveType = resolveType;
       }
 
-      public boolean matches( AbstractBundleDeploymentPlan otherPlan ) {
-         boolean result = true;
-         switch( resolveType ) {
-         case ExistingBundle:
-            result = false;
-            break;
-         case MavenProject:
-            result = result && mavenProject != null && otherPlan instanceof MavenProjectBundleDeploymentPlan && mavenProject.equals( ( ( MavenProjectBundleDeploymentPlan )otherPlan ).getMavenProjectHolder() );
-            break;
-         case MavenDependency:
-            result = result && mavenDependency != null && otherPlan instanceof MavenDependencyBundleDeploymentPlan && mavenDependency.equals( ( ( MavenDependencyBundleDeploymentPlan )otherPlan ).getDependency() );
-            break;
-         case None:
-            result = false;
-            break;
-         }
-         return result;
+      @Override
+      public String toString() {
+         return String.format( "Import Requirement(%s): %s(%s)", getImportedPackage().getPackageName(), getResolveType().name(), getResolveDescription() );
       }
    }
 
@@ -183,12 +200,17 @@ public class MavenProjectsBundleDeploymentPlan {
       }
 
       @Override
-      public String toString() {
-         return String.format( "Maven Dependency: %s", getDependency().getArtifactId() );
+      public URI getBundleUri() {
+         return dependency.getFile().toURI();
       }
 
       public Artifact getDependency() {
          return dependency;
+      }
+
+      @Override
+      public String toString() {
+         return String.format( "Maven Dependency: %s", getDependency().getArtifactId() );
       }
    }
 
@@ -207,12 +229,26 @@ public class MavenProjectsBundleDeploymentPlan {
       }
 
       @Override
-      public String toString() {
-         return String.format( "Maven Project: %s", getMavenProjectHolder().getProject().getArtifactId() );
+      public URI getBundleUri() {
+         try {
+            return new URI( String.format( "assembly:%s", getMavenProjectBundleFolder().getAbsolutePath() ) );
+         }
+         catch( Exception exception ) {
+            throw new RuntimeException( String.format( "Error getting maven project bundle URI for: %s", mavenProjectHolder.getProject().getArtifactId() ), exception );
+         }
       }
 
       public MavenProjectHolder getMavenProjectHolder() {
          return mavenProjectHolder;
+      }
+
+      @Override
+      public String toString() {
+         return String.format( "Maven Project: %s", getMavenProjectHolder().getProject().getArtifactId() );
+      }
+
+      private File getMavenProjectBundleFolder() {
+         return new File( mavenProjectHolder.getProject().getBuild().getOutputDirectory() );
       }
    }
 
@@ -229,12 +265,12 @@ public class MavenProjectsBundleDeploymentPlan {
       init();
    }
 
-   public List<AbstractBundleDeploymentPlan> getInstallOrder() {
-      return installOrder;
-   }
-
    public List<MavenDependencyBundleDeploymentPlan> getDependencyPlans() {
       return dependencyPlans;
+   }
+
+   public List<AbstractBundleDeploymentPlan> getInstallOrder() {
+      return installOrder;
    }
 
    public List<MavenProjectHolder> getMavenProjects() {
@@ -245,8 +281,38 @@ public class MavenProjectsBundleDeploymentPlan {
       return projectPlans;
    }
 
+   public List<AbstractBundleDeploymentPlan> getUnresolvedPlans() {
+      final List<AbstractBundleDeploymentPlan> result = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
+      for( AbstractBundleDeploymentPlan plan : installOrder ) {
+         if( !plan.isResolved() ) {
+            result.add( plan );
+         }
+      }
+      return result;
+   }
+
+   public boolean isResolved() {
+      return getUnresolvedPlans().isEmpty();
+   }
+
    public void setProjectPlans( List<MavenProjectBundleDeploymentPlan> projectPlans ) {
       this.projectPlans = projectPlans;
+   }
+
+   private void addMavenDependencyPlans( List<Artifact> dependencies ) {
+      for( Artifact dependency : dependencies ) {
+         final MavenDependencyBundleDeploymentPlan plan = new MavenDependencyBundleDeploymentPlan( dependency );
+         final BundleManifest manifest = getBundleManifest( dependency );
+         if( manifest == null ) {
+            throw new RuntimeException( String.format( "No manifest could be loaded for Maven Dependency: %s", dependency.getArtifactId() ) );
+         }
+         final List<BundleImportRequirement> requirements = resolveBundleImportRequirements( manifest );
+         plan.setImportRequirements( requirements );
+         if( !dependencyPlans.contains( plan ) ) {
+            dependencyPlans.add( plan );
+            addMavenDependencyPlans( getUnplannedMavenDependencies( plan ) );
+         }
+      }
    }
 
    private boolean containsExportForImport( Bundle bundle, ImportedPackage importedPackage ) {
@@ -397,27 +463,40 @@ public class MavenProjectsBundleDeploymentPlan {
       return new ArrayList<Artifact>( result );
    }
 
+   private List<Artifact> getUnplannedMavenDependencies( MavenDependencyBundleDeploymentPlan plan ) {
+      final List<Artifact> subDependencies = new ArrayList<Artifact>();
+      for( BundleImportRequirement requirement : plan.getImportRequirements() ) {
+         if( BundleImportRequirementResolveType.MavenDependency.equals( requirement.getResolveType() ) ) {
+            if( !hasMavenDependencyPlan( requirement ) ) {
+               subDependencies.add( requirement.getMavenDependency() );
+            }
+         }
+      }
+      return subDependencies;
+   }
+
+   private boolean hasMavenDependencyPlan( BundleImportRequirement requirement ) {
+      boolean result = false;
+      if( BundleImportRequirementResolveType.MavenDependency.equals( requirement.getResolveType() ) ) {
+         for( MavenDependencyBundleDeploymentPlan dependencyPlan : dependencyPlans ) {
+            if( requirement.matches( dependencyPlan ) ) {
+               result = true;
+               break;
+            }
+         }
+      }
+      return result;
+   }
+
    private void init() {
       initProjectPlans();
       initDependencyPlans();
       initInstallOrder();
    }
 
-   // TODO: Method to return all missing dependencies (optional and required)
-
    private void initDependencyPlans() {
       dependencyPlans.clear();
-      final List<Artifact> dependencies = getMavenDependenciesFromProjectPlans();
-      for( Artifact dependency : dependencies ) {
-         final MavenDependencyBundleDeploymentPlan plan = new MavenDependencyBundleDeploymentPlan( dependency );
-         final BundleManifest manifest = getBundleManifest( dependency );
-         if( manifest == null ) {
-            throw new RuntimeException( String.format( "No manifest could be loaded for Maven Dependency: %s", dependency.getArtifactId() ) );
-         }
-         final List<BundleImportRequirement> requirements = resolveBundleImportRequirements( manifest );
-         plan.setImportRequirements( requirements );
-         dependencyPlans.add( plan );
-      }
+      addMavenDependencyPlans( getMavenDependenciesFromProjectPlans() );
    }
 
    private void initInstallOrder() {
