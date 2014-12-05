@@ -520,6 +520,21 @@ public class MavenProjectsBundleDeploymentPlan {
       }
    }
 
+   private boolean isCircular( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
+      return isDependentOn( planA, planB ) && isDependentOn( planB, planA );
+   }
+
+   private boolean isDependentOn( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
+      boolean result = false;
+      for( BundleImportRequirement requirement : planA.getImportRequirements() ) {
+         if( requirement.matches( planB ) ) {
+            result = true;
+            break;
+         }
+      }
+      return result;
+   }
+
    private List<Artifact> resolveAllMavenDependencies() {
       final Set<Artifact> result = new HashSet<Artifact>();
       for( MavenProjectHolder holder : mavenProjects ) {
@@ -578,8 +593,8 @@ public class MavenProjectsBundleDeploymentPlan {
             for( int importIndex = index + 1; importIndex < current.size(); importIndex++ ) {
                final AbstractBundleDeploymentPlan otherPlan = current.get( importIndex );
                if( requirement.matches( otherPlan ) ) {
-                  adjustedFlag = true;
-                  if( !ordered.contains( otherPlan ) ) {
+                  if( !ordered.contains( otherPlan ) && !isCircular( currentPlan, otherPlan ) ) {
+                     adjustedFlag = true;
                      ordered.add( otherPlan );
                   }
                }
