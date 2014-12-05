@@ -35,4 +35,9 @@ public class MavenProjectHolder {
       hash = 31 * hash + project.hashCode();
       return hash;
    }
+
+   @Override
+   public boolean equals( Object other ) {
+      return project != null && other != null && other instanceof MavenProjectHolder && project.equals( ( ( MavenProjectHolder )other ).getProject() );
+   }
 }
