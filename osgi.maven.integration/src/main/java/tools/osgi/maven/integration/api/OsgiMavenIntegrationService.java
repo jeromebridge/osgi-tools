@@ -63,7 +63,7 @@ public class OsgiMavenIntegrationService {
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-               @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
+         @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
       deploy( verbose, workspacePath, null );
    }
@@ -74,8 +74,8 @@ public class OsgiMavenIntegrationService {
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-               @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
-               @Descriptor("List of projects to include from the workspace") String[] includeProjects
+         @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
+         @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
       try {
          // Validate Workspace Exists
@@ -132,9 +132,14 @@ public class OsgiMavenIntegrationService {
 
          // Resolve
          final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
-         if( !fw.resolveBundles( installedBundles ) ) {
+         if( fw.resolveBundles( installedBundles ) ) {
+            for( Bundle bundle : installedBundles ) {
+               bundle.start();
+               System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+            }
+         }
+         else {
             System.out.println( "Maven Projects Not Resolved" );
-
          }
 
          // Start All Bundles
