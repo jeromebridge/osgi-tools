@@ -134,7 +134,14 @@ public class OsgiMavenIntegrationService {
          final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
          if( fw.resolveBundles( installedBundles ) ) {
             for( Bundle bundle : installedBundles ) {
-               bundle.start();
+               try {
+                  bundle.start();
+               }
+               catch( Exception exception ) {
+                  System.out.println( String.format( "Failed Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                  exception.printStackTrace();
+                  throw new RuntimeException( String.format( "Error Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ), exception );
+               }
                System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
             }
          }
