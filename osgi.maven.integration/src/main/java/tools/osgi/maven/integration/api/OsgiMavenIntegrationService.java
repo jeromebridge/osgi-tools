@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.Writer;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,18 +63,31 @@ public class OsgiMavenIntegrationService {
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-         @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
+               @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
+         ) {
+      deploy( verbose, workspacePath, null );
+   }
+
+   @Descriptor("Analyzes the state of the OSGi container")
+   public void deploy(
+         @Descriptor("Print verbose messages") @Parameter(
+               names = { "-v", "--verbose" },
+               presentValue = "true",
+               absentValue = "false") boolean verbose,
+               @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
+               @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
       try {
-         final List<String> projectFilter = new ArrayList<String>();
-         projectFilter.add( "yaas-commons" );
-         //projectFilter.add( "yaas-xml" );
-         //projectFilter.add( "yaas-db" );
-
          // Validate Workspace Exists
          final File workspaceFolder = new File( workspacePath );
          if( !workspaceFolder.exists() ) {
             throw new RuntimeException( String.format( "Workspace: %s could not be found", workspacePath ) );
+         }
+
+         // Project Filters
+         final List<String> projectFilter = new ArrayList<String>();
+         if( includeProjects != null ) {
+            projectFilter.addAll( Arrays.asList( includeProjects ) );
          }
 
          // Validate RepositoryAdmin Service Is Available
@@ -123,6 +137,8 @@ public class OsgiMavenIntegrationService {
 
          }
 
+         // Start All Bundles
+
          // Create Repository
          // final MavenProjectsObrResult obrResult = createObrResouresForMavenProjects( mavenProjects );
 
@@ -155,52 +171,6 @@ public class OsgiMavenIntegrationService {
       catch( Throwable exception ) {
          exception.printStackTrace();
       }
-   }
-
-   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
-      System.out.println( "Deployment Plan" );
-      System.out.println( "===============================================" );
-      for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
-         System.out.println( plan );
-         if( verbose ) {
-            for( BundleImportRequirement importRequirement : plan.getImportRequirements() ) {
-               System.out.println( "   " + importRequirement );
-            }
-         }
-      }
-      System.out.println( "" );
-      if( !deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
-         System.out.println( "Unresolved (Mandatory)" );
-         System.out.println( "===============================================" );
-         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans( Resolution.MANDATORY ) ) {
-            System.out.println( plan );
-            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( Resolution.MANDATORY ) ) {
-               System.out.println( "   " + importRequirement );
-            }
-         }
-      }
-   }
-
-   @SuppressWarnings("unused")
-   private List<URI> getMavenProjectBundleUris( List<MavenProjectHolder> mavenProjects ) {
-      final List<URI> result = new ArrayList<URI>();
-      for( MavenProjectHolder holder : mavenProjects ) {
-         result.add( getMavenProjectBundleUri( holder.getProject() ) );
-      }
-      return result;
-   }
-
-   private URI getMavenProjectBundleUri( MavenProject project ) {
-      try {
-         return new URI( String.format( "assembly:%s", getMavenProjectBundleFolder( project ).getAbsolutePath() ) );
-      }
-      catch( Exception exception ) {
-         throw new RuntimeException( String.format( "Error getting maven project bundle URI for: %s", project.getArtifactId() ), exception );
-      }
-   }
-
-   private File getMavenProjectBundleFolder( MavenProject project ) {
-      return new File( project.getBuild().getOutputDirectory() );
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
@@ -313,6 +283,28 @@ public class OsgiMavenIntegrationService {
       return result;
    }
 
+   private File getMavenProjectBundleFolder( MavenProject project ) {
+      return new File( project.getBuild().getOutputDirectory() );
+   }
+
+   private URI getMavenProjectBundleUri( MavenProject project ) {
+      try {
+         return new URI( String.format( "assembly:%s", getMavenProjectBundleFolder( project ).getAbsolutePath() ) );
+      }
+      catch( Exception exception ) {
+         throw new RuntimeException( String.format( "Error getting maven project bundle URI for: %s", project.getArtifactId() ), exception );
+      }
+   }
+
+   @SuppressWarnings("unused")
+   private List<URI> getMavenProjectBundleUris( List<MavenProjectHolder> mavenProjects ) {
+      final List<URI> result = new ArrayList<URI>();
+      for( MavenProjectHolder holder : mavenProjects ) {
+         result.add( getMavenProjectBundleUri( holder.getProject() ) );
+      }
+      return result;
+   }
+
    private List<File> getMavenProjectFolders( File folder ) {
       final List<File> result = new ArrayList<File>();
       for( File subFolder : folder.listFiles() ) {
@@ -371,6 +363,30 @@ public class OsgiMavenIntegrationService {
    private boolean isOsgiBundle( MavenProject project ) {
       final File classesFolder = new File( project.getBuild().getOutputDirectory() );
       return ObrUtils.isOsgiBundle( classesFolder );
+   }
+
+   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
+      System.out.println( "Deployment Plan" );
+      System.out.println( "===============================================" );
+      for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
+         System.out.println( plan );
+         if( verbose ) {
+            for( BundleImportRequirement importRequirement : plan.getImportRequirements() ) {
+               System.out.println( "   " + importRequirement );
+            }
+         }
+      }
+      System.out.println( "" );
+      if( !deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
+         System.out.println( "Unresolved (Mandatory)" );
+         System.out.println( "===============================================" );
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans( Resolution.MANDATORY ) ) {
+            System.out.println( plan );
+            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( Resolution.MANDATORY ) ) {
+               System.out.println( "   " + importRequirement );
+            }
+         }
+      }
    }
 
    @SuppressWarnings("unused")
