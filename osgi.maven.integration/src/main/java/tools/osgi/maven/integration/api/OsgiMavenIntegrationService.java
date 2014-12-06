@@ -45,6 +45,8 @@ import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.ObrUtils;
 import tools.osgi.maven.integration.internal.aether.Booter;
 
+import com.springsource.util.osgi.manifest.Resolution;
+
 public class OsgiMavenIntegrationService {
    private static final Logger LOG = LoggerFactory.getLogger( OsgiMavenIntegrationService.class );
 
@@ -65,8 +67,8 @@ public class OsgiMavenIntegrationService {
       try {
          final List<String> projectFilter = new ArrayList<String>();
          projectFilter.add( "yaas-commons" );
-         projectFilter.add( "yaas-xml" );
-         projectFilter.add( "yaas-db" );
+         //projectFilter.add( "yaas-xml" );
+         //projectFilter.add( "yaas-db" );
 
          // Validate Workspace Exists
          final File workspaceFolder = new File( workspacePath );
@@ -87,7 +89,7 @@ public class OsgiMavenIntegrationService {
 
          // Install Plan
          final List<Bundle> installedBundles = new ArrayList<Bundle>();
-         if( deploymentPlan.isResolved() ) {
+         if( deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
                try {
                   final Bundle bundle = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
@@ -167,12 +169,12 @@ public class OsgiMavenIntegrationService {
          }
       }
       System.out.println( "" );
-      if( !deploymentPlan.isResolved() ) {
-         System.out.println( "Unresolved" );
+      if( !deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
+         System.out.println( "Unresolved (Mandatory)" );
          System.out.println( "===============================================" );
-         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans() ) {
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans( Resolution.MANDATORY ) ) {
             System.out.println( plan );
-            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements() ) {
+            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( Resolution.MANDATORY ) ) {
                System.out.println( "   " + importRequirement );
             }
          }

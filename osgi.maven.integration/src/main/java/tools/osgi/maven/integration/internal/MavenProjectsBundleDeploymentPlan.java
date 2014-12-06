@@ -23,6 +23,7 @@ import com.springsource.util.osgi.manifest.BundleManifest;
 import com.springsource.util.osgi.manifest.BundleManifestFactory;
 import com.springsource.util.osgi.manifest.ExportedPackage;
 import com.springsource.util.osgi.manifest.ImportedPackage;
+import com.springsource.util.osgi.manifest.Resolution;
 import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 
 /** Defines a deployment plan for a maven project */
@@ -41,17 +42,27 @@ public class MavenProjectsBundleDeploymentPlan {
       }
 
       public List<BundleImportRequirement> getUnresolvedImportRequirements() {
+         return getUnresolvedImportRequirements( null );
+      }
+
+      public List<BundleImportRequirement> getUnresolvedImportRequirements( Resolution resolution ) {
          final List<BundleImportRequirement> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
          for( BundleImportRequirement requirement : importRequirements ) {
-            if( !requirement.isResolved() ) {
-               result.add( requirement );
+            if( resolution == null || requirement.getImportedPackage().getResolution().equals( resolution ) ) {
+               if( !requirement.isResolved() ) {
+                  result.add( requirement );
+               }
             }
          }
          return result;
       }
 
       public boolean isResolved() {
-         return getUnresolvedImportRequirements().isEmpty();
+         return isResolved( null );
+      }
+
+      public boolean isResolved( Resolution resolution ) {
+         return getUnresolvedImportRequirements( resolution ).isEmpty();
       }
 
       public void setImportRequirements( List<BundleImportRequirement> importRequirements ) {
@@ -282,9 +293,13 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    public List<AbstractBundleDeploymentPlan> getUnresolvedPlans() {
+      return getUnresolvedPlans( null );
+   }
+
+   public List<AbstractBundleDeploymentPlan> getUnresolvedPlans( Resolution resolution ) {
       final List<AbstractBundleDeploymentPlan> result = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
       for( AbstractBundleDeploymentPlan plan : installOrder ) {
-         if( !plan.isResolved() ) {
+         if( !plan.isResolved( resolution ) ) {
             result.add( plan );
          }
       }
@@ -292,7 +307,11 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    public boolean isResolved() {
-      return getUnresolvedPlans().isEmpty();
+      return isResolved( null );
+   }
+
+   public boolean isResolved( Resolution resolution ) {
+      return getUnresolvedPlans( resolution ).isEmpty();
    }
 
    public void setProjectPlans( List<MavenProjectBundleDeploymentPlan> projectPlans ) {
