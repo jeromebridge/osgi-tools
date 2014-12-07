@@ -68,6 +68,17 @@ public class MavenProjectsBundleDeploymentPlan {
       public void setImportRequirements( List<BundleImportRequirement> importRequirements ) {
          this.importRequirements = importRequirements;
       }
+
+      public boolean isDependentOn( AbstractBundleDeploymentPlan planB ) {
+         boolean result = false;
+         for( BundleImportRequirement requirement : getImportRequirements() ) {
+            if( requirement.matches( planB ) ) {
+               result = true;
+               break;
+            }
+         }
+         return result;
+      }
    }
 
    public static class BundleImportRequirement {
@@ -183,6 +194,44 @@ public class MavenProjectsBundleDeploymentPlan {
       public String toString() {
          return String.format( "Import Requirement(%s): %s(%s)", getImportedPackage().getPackageName(), getResolveType().name(), getResolveDescription() );
       }
+   }
+
+   public List<AbstractBundleDeploymentPlan> getDependentBundleDeploymentPlans( AbstractBundleDeploymentPlan plan ) {
+      final List<AbstractBundleDeploymentPlan> result = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
+      addDependentPlans( result, plan );
+      return result;
+   }
+
+   public List<MavenProjectBundleDeploymentPlan> getDependentMavenProjectBundleDeploymentPlans( AbstractBundleDeploymentPlan plan ) {
+      final List<AbstractBundleDeploymentPlan> all = getDependentBundleDeploymentPlans( plan );
+      final List<MavenProjectBundleDeploymentPlan> result = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan>();
+      for( AbstractBundleDeploymentPlan dependent : all ) {
+         if( dependent instanceof MavenProjectBundleDeploymentPlan ) {
+            result.add( ( ( MavenProjectBundleDeploymentPlan )dependent ) );
+         }
+      }
+      return result;
+   }
+
+   private void addDependentPlans( List<AbstractBundleDeploymentPlan> plans, AbstractBundleDeploymentPlan plan ) {
+      for( AbstractBundleDeploymentPlan otherPlan : installOrder ) {
+         if( !plan.equals( otherPlan ) && otherPlan.isDependentOn( plan ) && !plans.contains( otherPlan ) ) {
+            plans.add( otherPlan );
+            addDependentPlans( plans, otherPlan );
+         }
+      }
+   }
+
+   @SuppressWarnings({ "unchecked", "unused" })
+   private <T extends AbstractBundleDeploymentPlan> T findMatchingBundleDeploymentPlan( BundleImportRequirement requirement ) {
+      T result = null;
+      for( AbstractBundleDeploymentPlan plan : installOrder ) {
+         if( requirement.matches( plan ) ) {
+            result = ( T )plan;
+            break;
+         }
+      }
+      return result;
    }
 
    public static enum BundleImportRequirementResolveType {
@@ -540,18 +589,7 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private boolean isCircular( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
-      return isDependentOn( planA, planB ) && isDependentOn( planB, planA );
-   }
-
-   private boolean isDependentOn( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
-      boolean result = false;
-      for( BundleImportRequirement requirement : planA.getImportRequirements() ) {
-         if( requirement.matches( planB ) ) {
-            result = true;
-            break;
-         }
-      }
-      return result;
+      return planA.isDependentOn( planB ) && planB.isDependentOn( planA );
    }
 
    private List<Artifact> resolveAllMavenDependencies() {

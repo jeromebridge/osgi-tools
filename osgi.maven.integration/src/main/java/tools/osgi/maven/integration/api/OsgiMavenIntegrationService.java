@@ -42,6 +42,7 @@ import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleImportRequirement;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.ObrUtils;
 import tools.osgi.maven.integration.internal.aether.Booter;
@@ -116,21 +117,7 @@ public class OsgiMavenIntegrationService {
             }
          }
 
-         //         // Install Maven Project Bundles
-         //         final List<URI> mavenProjectBundleUris = getMavenProjectBundleUris( mavenProjects );
-         //         final List<Bundle> installedBundles = new ArrayList<Bundle>();
-         //         for( URI uri : mavenProjectBundleUris ) {
-         //            try {
-         //               final Bundle bundle = bundleContext.installBundle( uri.toURL().toExternalForm() );
-         //               installedBundles.add( bundle );
-         //               System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
-         //            }
-         //            catch( Exception exception ) {
-         //               System.out.println( "Failed to install: " + uri + " Reason: " + exception.getMessage() );
-         //            }
-         //         }
-
-         // Resolve
+         // Resolve And Start
          final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
          if( fw.resolveBundles( installedBundles ) ) {
             for( Bundle bundle : installedBundles ) {
@@ -148,37 +135,6 @@ public class OsgiMavenIntegrationService {
          else {
             System.out.println( "Maven Projects Not Resolved" );
          }
-
-         // Start All Bundles
-
-         // Create Repository
-         // final MavenProjectsObrResult obrResult = createObrResouresForMavenProjects( mavenProjects );
-
-         // printObrSummary( obrResult );
-         //         final Resource[] resources = obrResult.getResources().toArray( new Resource[obrResult.getResources().size()] );
-         // final Repository repository = repositoryAdmin.getHelper().repository( resources );
-         // final File repositoryFile = addRepository( repositoryAdmin, repository );
-
-         // Determine If Each Maven Project Is Installed
-         // Create Deployment Plan
-
-         // Deploy
-         //         final Resolver resolver = repositoryAdmin.resolver();
-         //         for( Resource mavenProjectResource : obrResult.getMavenProjectResources() ) {
-         //            resolver.add( mavenProjectResource );
-         //         }
-         //         resolver.resolve();
-         // final Reason[] reqs = resolver.getUnsatisfiedRequirements();
-         //         for( int i = 0; i < reqs.length; i++ ) {
-         //            System.out.println( "Unable to resolve resource: " + reqs[i].getResource() + " requirement: " + reqs[i].getRequirement() );
-         //         }
-         // resolver.deploy( Resolver.START );
-
-         // Check If Projects Installed
-
-         //         // Remove Repository
-         //         System.out.println( "Repository File: " + repositoryFile.toURI().toURL().toExternalForm() );
-         //         repositoryAdmin.removeRepository( repositoryFile.toURI().toURL().toExternalForm() );
       }
       catch( Throwable exception ) {
          exception.printStackTrace();
@@ -397,6 +353,11 @@ public class OsgiMavenIntegrationService {
             for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( Resolution.MANDATORY ) ) {
                System.out.println( "   " + importRequirement );
             }
+            if( !( plan instanceof MavenProjectBundleDeploymentPlan ) ) {
+               for( MavenProjectBundleDeploymentPlan dependent : deploymentPlan.getDependentMavenProjectBundleDeploymentPlans( plan ) ) {
+                  System.out.println( "   Maven Project Reference: " + dependent );
+               }
+            }
          }
       }
    }
@@ -415,19 +376,6 @@ public class OsgiMavenIntegrationService {
          for( URI uri : mavenProjectsAdded ) {
             System.out.println( "   " + uri.toURL().toExternalForm() );
          }
-         //         System.out.println( "Dependencies Added" );
-         //         System.out.println( "===============================================" );
-         //         for( File file : dependenciesAdded ) {
-         //            System.out.println( "   " + file.toURI().toURL().toExternalForm() );
-         //         }
-         //         System.out.println( "" );
-         //
-         //         System.out.println( "Dependencies Not Added" );
-         //         System.out.println( "===============================================" );
-         //         for( File file : dependenciesNotAdded ) {
-         //            System.out.println( "   " + file.toURI().toURL().toExternalForm() );
-         //         }
-         //         System.out.println( "" );
       }
       catch( Exception exception ) {
          throw new RuntimeException( "Error printing OBR results", exception );
