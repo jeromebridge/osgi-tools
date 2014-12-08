@@ -60,6 +60,12 @@
     </distributionManagement>
 
     <dependencies>
+        <!-- OSGi Tools -->
+        <dependency>
+            <groupId>tools.osgi</groupId>
+            <artifactId>osgi.analyzer</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
 
         <!-- SLF4J -->
         <dependency>

@@ -78,4 +78,9 @@ public class UseConflict {
    public void setUseConflictImportedPackage( ImportedPackage useConflictImportedPackage ) {
       this.useConflictImportedPackage = useConflictImportedPackage;
    }
+
+   @Override
+   public String toString() {
+      return String.format( "Use Conflict: %s(%s)", importedPackage.getPackageName(), type.name() );
+   }
 }

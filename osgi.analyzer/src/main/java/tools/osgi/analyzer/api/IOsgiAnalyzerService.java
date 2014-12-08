@@ -8,8 +8,6 @@ import com.springsource.util.osgi.manifest.ImportedPackage;
 
 public interface IOsgiAnalyzerService {
 
-   BundleDiagnosisResult diagnose( Bundle bundle );
-
    List<Bundle> findBundlesWithUseConflicts();
 
    List<UseConflict> findUseConflicts( Bundle bundle );

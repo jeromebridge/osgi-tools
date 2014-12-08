@@ -10,7 +10,9 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.felix.bundlerepository.Repository;
 import org.apache.felix.bundlerepository.RepositoryAdmin;
@@ -40,6 +42,8 @@ import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tools.osgi.analyzer.api.IOsgiAnalyzerService;
+import tools.osgi.analyzer.api.UseConflict;
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
@@ -51,6 +55,7 @@ import tools.osgi.maven.integration.internal.aether.Booter;
 
 import com.springsource.util.osgi.manifest.Resolution;
 
+@SuppressWarnings("deprecation")
 public class OsgiMavenIntegrationService {
    private static final Logger LOG = LoggerFactory.getLogger( OsgiMavenIntegrationService.class );
 
@@ -75,7 +80,6 @@ public class OsgiMavenIntegrationService {
       deploy( verbose, planOnly, workspacePath, null );
    }
 
-   @SuppressWarnings("deprecation")
    @Descriptor("Analyzes the state of the OSGi container")
    public void deploy(
          @Descriptor("Print verbose messages") @Parameter(
@@ -137,7 +141,7 @@ public class OsgiMavenIntegrationService {
          final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
          if( !fw.resolveBundles( installedBundles ) ) {
             System.out.println( "Maven Projects Not Resolved" );
-            final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+            final PackageAdmin packageAdmin = getPackageAdmin();
             final Bundle[] refreshBundles = new Bundle[installedBundles.size()];
             installedBundles.toArray( refreshBundles );
             packageAdmin.refreshPackages( refreshBundles );
@@ -147,10 +151,15 @@ public class OsgiMavenIntegrationService {
                bundle.start();
             }
             catch( Exception exception ) {
-               // TODO: Check for Use Conflicts here and attempt to fix with a refresh 
-               System.out.println( String.format( "Failed Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
-               exception.printStackTrace();
-               throw new RuntimeException( String.format( "Error Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ), exception );
+               if( isUseConflict( bundle ) ) {
+                  refreshBundleWithUseConflicts( bundle );
+                  bundle.start();
+               }
+               else {
+                  System.out.println( String.format( "Failed Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                  exception.printStackTrace();
+                  throw new RuntimeException( String.format( "Error Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ), exception );
+               }
             }
             System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
          }
@@ -158,14 +167,6 @@ public class OsgiMavenIntegrationService {
       catch( Throwable exception ) {
          exception.printStackTrace();
       }
-   }
-
-   @SuppressWarnings("deprecation")
-   private PackageAdmin getPackageAdmin( BundleContext context ) {
-      final ServiceTracker<PackageAdmin, Object> packageAdminTracker = new ServiceTracker<PackageAdmin, Object>( context, PackageAdmin.class.getName(), null );
-      packageAdminTracker.open();
-      final PackageAdmin packageAdmin = ( PackageAdmin )packageAdminTracker.getService();
-      return packageAdmin;
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
@@ -334,6 +335,13 @@ public class OsgiMavenIntegrationService {
       }
    }
 
+   private IOsgiAnalyzerService getOsgiAnalyzerService() {
+      final ServiceTracker<IOsgiAnalyzerService, Object> tracker = new ServiceTracker<IOsgiAnalyzerService, Object>( bundleContext, IOsgiAnalyzerService.class.getName(), null );
+      tracker.open();
+      final IOsgiAnalyzerService result = ( IOsgiAnalyzerService )tracker.getService();
+      return result;
+   }
+
    @SuppressWarnings({ "unchecked", "rawtypes" })
    private <T> T getOsgiService( BundleContext context, Class<T> clazz ) {
       final ServiceReference ref = context.getServiceReference( clazz.getName() );
@@ -342,6 +350,13 @@ public class OsgiMavenIntegrationService {
          result = ( T )context.getService( ref );
       }
       return result;
+   }
+
+   private PackageAdmin getPackageAdmin() {
+      final ServiceTracker<PackageAdmin, Object> packageAdminTracker = new ServiceTracker<PackageAdmin, Object>( bundleContext, PackageAdmin.class.getName(), null );
+      packageAdminTracker.open();
+      final PackageAdmin packageAdmin = ( PackageAdmin )packageAdminTracker.getService();
+      return packageAdmin;
    }
 
    private RepositoryAdmin getRepositoryAdmin() {
@@ -360,6 +375,10 @@ public class OsgiMavenIntegrationService {
       return ObrUtils.isOsgiBundle( classesFolder );
    }
 
+   private boolean isUseConflict( Bundle bundle ) {
+      return !getOsgiAnalyzerService().findUseConflicts( bundle ).isEmpty();
+   }
+
    private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
       System.out.println( "Deployment Plan" );
       System.out.println( "===============================================" );
@@ -374,24 +393,6 @@ public class OsgiMavenIntegrationService {
       System.out.println( "" );
       printUnresolved( deploymentPlan, verbose, Resolution.MANDATORY );
       printUnresolved( deploymentPlan, verbose, Resolution.OPTIONAL );
-   }
-
-   private void printUnresolved( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose, Resolution resolution ) {
-      if( !deploymentPlan.isResolved( resolution ) ) {
-         System.out.println( String.format( "Unresolved (%s)", resolution.name() ) );
-         System.out.println( "===============================================" );
-         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans( resolution ) ) {
-            System.out.println( plan );
-            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( resolution ) ) {
-               System.out.println( "   " + importRequirement );
-            }
-            if( !( plan instanceof MavenProjectBundleDeploymentPlan ) ) {
-               for( MavenProjectBundleDeploymentPlan dependent : deploymentPlan.getDependentMavenProjectBundleDeploymentPlans( plan ) ) {
-                  System.out.println( "   Maven Project Reference: " + dependent );
-               }
-            }
-         }
-      }
    }
 
    @SuppressWarnings("unused")
@@ -412,6 +413,35 @@ public class OsgiMavenIntegrationService {
       catch( Exception exception ) {
          throw new RuntimeException( "Error printing OBR results", exception );
       }
+   }
+
+   private void printUnresolved( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose, Resolution resolution ) {
+      if( !deploymentPlan.isResolved( resolution ) ) {
+         System.out.println( String.format( "Unresolved (%s)", resolution.name() ) );
+         System.out.println( "===============================================" );
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans( resolution ) ) {
+            System.out.println( plan );
+            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( resolution ) ) {
+               System.out.println( "   " + importRequirement );
+            }
+            if( !( plan instanceof MavenProjectBundleDeploymentPlan ) ) {
+               for( MavenProjectBundleDeploymentPlan dependent : deploymentPlan.getDependentMavenProjectBundleDeploymentPlans( plan ) ) {
+                  System.out.println( "   Maven Project Reference: " + dependent );
+               }
+            }
+         }
+      }
+   }
+
+   private void refreshBundleWithUseConflicts( Bundle bundle ) {
+      final Set<Bundle> bundles = new HashSet<Bundle>();
+      bundles.add( bundle );
+      for( UseConflict useConflict : getOsgiAnalyzerService().findUseConflicts( bundle ) ) {
+         bundles.add( useConflict.getUseConflictBundle() );
+      }
+      final Bundle[] refreshBundles = new Bundle[bundles.size()];
+      bundles.toArray( refreshBundles );
+      getPackageAdmin().refreshPackages( refreshBundles );
    }
 
 }

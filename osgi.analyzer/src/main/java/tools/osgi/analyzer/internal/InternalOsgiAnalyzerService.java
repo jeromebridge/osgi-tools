@@ -13,7 +13,6 @@ import org.osgi.service.packageadmin.ExportedPackage;
 import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
-import tools.osgi.analyzer.api.BundleDiagnosisResult;
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
 import tools.osgi.analyzer.api.UseConflict;
 
@@ -25,18 +24,12 @@ import com.springsource.util.osgi.manifest.Resolution;
 import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 
 @SuppressWarnings("deprecation")
-public class OsgiAnalyzerService implements IOsgiAnalyzerService {
+public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
 
    private BundleContext bundleContext;
 
-   public OsgiAnalyzerService( BundleContext bundleContext ) {
+   public InternalOsgiAnalyzerService( BundleContext bundleContext ) {
       this.bundleContext = bundleContext;
-   }
-
-   @Override
-   public BundleDiagnosisResult diagnose( Bundle bundle ) {
-      // TODO Auto-generated method stub
-      return null;
    }
 
    @Override
