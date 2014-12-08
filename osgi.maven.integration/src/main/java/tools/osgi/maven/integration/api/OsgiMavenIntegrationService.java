@@ -35,6 +35,8 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
+import org.osgi.service.packageadmin.PackageAdmin;
+import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,17 +66,26 @@ public class OsgiMavenIntegrationService {
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
+         @Descriptor("Print deployment plan only") @Parameter(
+               names = { "-p", "--plan-only" },
+               presentValue = "true",
+               absentValue = "false") boolean planOnly,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, workspacePath, null );
+      deploy( verbose, planOnly, workspacePath, null );
    }
 
+   @SuppressWarnings("deprecation")
    @Descriptor("Analyzes the state of the OSGi container")
    public void deploy(
          @Descriptor("Print verbose messages") @Parameter(
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
+         @Descriptor("Print deployment plan only") @Parameter(
+               names = { "-p", "--plan-only" },
+               presentValue = "true",
+               absentValue = "false") boolean planOnly,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
          @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
@@ -102,6 +113,11 @@ public class OsgiMavenIntegrationService {
          final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects );
          printDeploymentPlan( deploymentPlan, verbose );
 
+         // Plan Only
+         if( planOnly ) {
+            return;
+         }
+
          // Install Plan
          final List<Bundle> installedBundles = new ArrayList<Bundle>();
          if( deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
@@ -119,26 +135,37 @@ public class OsgiMavenIntegrationService {
 
          // Resolve And Start
          final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
-         if( fw.resolveBundles( installedBundles ) ) {
-            for( Bundle bundle : installedBundles ) {
-               try {
-                  bundle.start();
-               }
-               catch( Exception exception ) {
-                  System.out.println( String.format( "Failed Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
-                  exception.printStackTrace();
-                  throw new RuntimeException( String.format( "Error Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ), exception );
-               }
-               System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
-            }
-         }
-         else {
+         if( !fw.resolveBundles( installedBundles ) ) {
             System.out.println( "Maven Projects Not Resolved" );
+            final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+            final Bundle[] refreshBundles = new Bundle[installedBundles.size()];
+            installedBundles.toArray( refreshBundles );
+            packageAdmin.refreshPackages( refreshBundles );
+         }
+         for( Bundle bundle : installedBundles ) {
+            try {
+               bundle.start();
+            }
+            catch( Exception exception ) {
+               // TODO: Check for Use Conflicts here and attempt to fix with a refresh 
+               System.out.println( String.format( "Failed Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+               exception.printStackTrace();
+               throw new RuntimeException( String.format( "Error Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ), exception );
+            }
+            System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
          }
       }
       catch( Throwable exception ) {
          exception.printStackTrace();
       }
+   }
+
+   @SuppressWarnings("deprecation")
+   private PackageAdmin getPackageAdmin( BundleContext context ) {
+      final ServiceTracker<PackageAdmin, Object> packageAdminTracker = new ServiceTracker<PackageAdmin, Object>( context, PackageAdmin.class.getName(), null );
+      packageAdminTracker.open();
+      final PackageAdmin packageAdmin = ( PackageAdmin )packageAdminTracker.getService();
+      return packageAdmin;
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
@@ -345,12 +372,17 @@ public class OsgiMavenIntegrationService {
          }
       }
       System.out.println( "" );
-      if( !deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
-         System.out.println( "Unresolved (Mandatory)" );
+      printUnresolved( deploymentPlan, verbose, Resolution.MANDATORY );
+      printUnresolved( deploymentPlan, verbose, Resolution.OPTIONAL );
+   }
+
+   private void printUnresolved( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose, Resolution resolution ) {
+      if( !deploymentPlan.isResolved( resolution ) ) {
+         System.out.println( String.format( "Unresolved (%s)", resolution.name() ) );
          System.out.println( "===============================================" );
-         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans( Resolution.MANDATORY ) ) {
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getUnresolvedPlans( resolution ) ) {
             System.out.println( plan );
-            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( Resolution.MANDATORY ) ) {
+            for( BundleImportRequirement importRequirement : plan.getUnresolvedImportRequirements( resolution ) ) {
                System.out.println( "   " + importRequirement );
             }
             if( !( plan instanceof MavenProjectBundleDeploymentPlan ) ) {
