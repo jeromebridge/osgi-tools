@@ -11,11 +11,8 @@ import org.apache.felix.service.command.Descriptor;
 import org.apache.felix.service.command.Parameter;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.wiring.BundleRevision;
-import org.osgi.framework.wiring.BundleWire;
 import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
-import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
 import com.springsource.util.osgi.manifest.ImportedPackage;
@@ -109,13 +106,6 @@ public class OsgiAnalyzerCommandService {
       final ServiceTracker<MBeanServer, Object> packageAdminTracker = new ServiceTracker<MBeanServer, Object>( bundleContext, MBeanServer.class.getName(), null );
       packageAdminTracker.open();
       final MBeanServer result = ( MBeanServer )packageAdminTracker.getService();
-      return result;
-   }
-
-   private PackageAdmin getPackageAdmin() {
-      final ServiceTracker<PackageAdmin, Object> packageAdminTracker = new ServiceTracker<PackageAdmin, Object>( bundleContext, PackageAdmin.class.getName(), null );
-      packageAdminTracker.open();
-      final PackageAdmin result = ( PackageAdmin )packageAdminTracker.getService();
       return result;
    }
 
