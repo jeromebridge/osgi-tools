@@ -75,9 +75,13 @@ public class OsgiMavenIntegrationService {
                names = { "-p", "--plan-only" },
                presentValue = "true",
                absentValue = "false") boolean planOnly,
+         @Descriptor("Uninstall/Install existing project bundles") @Parameter(
+               names = { "-r", "--reinstall" },
+               presentValue = "true",
+               absentValue = "false") boolean reinstall,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, workspacePath, null );
    }
 
    @Descriptor("Analyzes the state of the OSGi container")
@@ -90,6 +94,10 @@ public class OsgiMavenIntegrationService {
                names = { "-p", "--plan-only" },
                presentValue = "true",
                absentValue = "false") boolean planOnly,
+         @Descriptor("Uninstall/Install existing project bundles") @Parameter(
+               names = { "-r", "--reinstall" },
+               presentValue = "true",
+               absentValue = "false") boolean reinstall,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
          @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
@@ -122,14 +130,42 @@ public class OsgiMavenIntegrationService {
             return;
          }
 
+         // Uninstall First?
+         if( reinstall ) {
+            for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
+               final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+               if( existing != null ) {
+                  existing.uninstall();
+                  System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+               }
+            }
+         }
+
+         // Stop Existing Project Bundles
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
+            final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+            if( existing != null ) {
+               existing.stop();
+               System.out.println( String.format( "Stopped Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+            }
+         }
+
          // Install Plan
          final List<Bundle> installedBundles = new ArrayList<Bundle>();
          if( deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
                try {
-                  final Bundle bundle = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
-                  installedBundles.add( bundle );
-                  System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                  final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+                  if( existing != null ) {
+                     existing.update();
+                     installedBundles.add( existing );
+                     System.out.println( String.format( "Updated Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+                  }
+                  else {
+                     final Bundle bundle = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
+                     installedBundles.add( bundle );
+                     System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                  }
                }
                catch( Exception exception ) {
                   System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );

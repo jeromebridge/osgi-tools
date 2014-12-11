@@ -570,18 +570,25 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private void initDependencyPlans() {
+      final Date startTime = new Date();
       dependencyPlans.clear();
       addMavenDependencyPlans( getMavenDependenciesFromProjectPlans() );
+      final Date endTime = new Date();
+      printDuration( startTime, endTime, "Init Dependency Plans" );
    }
 
    private void initInstallOrder() {
+      final Date startTime = new Date();
       installOrder.clear();
       installOrder.addAll( dependencyPlans );
       installOrder.addAll( projectPlans );
       sortInstallOrder( installOrder );
+      final Date endTime = new Date();
+      printDuration( startTime, endTime, "Init Install Order" );
    }
 
    private void initProjectPlans() {
+      final Date startTime = new Date();
       projectPlans.clear();
       for( MavenProjectHolder holder : mavenProjects ) {
          final MavenProjectBundleDeploymentPlan plan = new MavenProjectBundleDeploymentPlan( holder );
@@ -593,6 +600,13 @@ public class MavenProjectsBundleDeploymentPlan {
          plan.setImportRequirements( requirements );
          projectPlans.add( plan );
       }
+      final Date endTime = new Date();
+      printDuration( startTime, endTime, "Init Project Plans" );
+   }
+
+   private void printDuration( Date startTime, Date endTime, String description ) {
+      final long seconds = ( endTime.getTime() - startTime.getTime() ) / 1000;
+      System.out.println( String.format( "%s: %s Seconds", description, seconds ) );
    }
 
    private boolean isCircular( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
