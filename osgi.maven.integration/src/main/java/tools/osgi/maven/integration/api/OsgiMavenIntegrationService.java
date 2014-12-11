@@ -152,8 +152,14 @@ public class OsgiMavenIntegrationService {
             }
             catch( Exception exception ) {
                if( isUseConflict( bundle ) ) {
-                  refreshBundleWithUseConflicts( bundle );
-                  bundle.start();
+                  try {
+                     refreshBundleWithUseConflicts( bundle );
+                     bundle.start();
+                  }
+                  catch( Exception exception2 ) {
+                     // Diagnose Exception
+                     getOsgiAnalyzerService().diagnose( exception2 );
+                  }
                }
                else {
                   System.out.println( String.format( "Failed Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );

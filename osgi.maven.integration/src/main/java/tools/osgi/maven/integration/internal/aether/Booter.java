@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
+import org.eclipse.aether.DefaultRepositoryCache;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
@@ -24,9 +25,9 @@ public class Booter {
    public static DefaultRepositorySystemSession newRepositorySystemSession( RepositorySystem system, LocalRepository localRepo )
    {
       final DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
-      // LocalRepository localRepo = new LocalRepository( "target/local-repo" );
+      session.setCache( new DefaultRepositoryCache() );
       session.setLocalRepositoryManager( system.newLocalRepositoryManager( session, localRepo ) );
-      // session.setTransferListener( new ConsoleTransferListener() );
+      session.setTransferListener( new ConsoleTransferListener() );
       // session.setRepositoryListener( new ConsoleRepositoryListener() );
       // uncomment to generate dirty trees
       // session.setDependencyGraphTransformer( null );

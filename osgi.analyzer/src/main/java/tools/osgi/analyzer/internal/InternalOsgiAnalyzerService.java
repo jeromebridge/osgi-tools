@@ -1,8 +1,11 @@
 package tools.osgi.analyzer.internal;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
@@ -24,12 +27,22 @@ import com.springsource.util.osgi.manifest.Resolution;
 import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 
 @SuppressWarnings("deprecation")
-public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
+public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, UncaughtExceptionHandler {
 
    private BundleContext bundleContext;
+   private UncaughtExceptionHandler oldHandler;
 
    public InternalOsgiAnalyzerService( BundleContext bundleContext ) {
       this.bundleContext = bundleContext;
+   }
+
+   public void start() {
+      oldHandler = Thread.getDefaultUncaughtExceptionHandler();
+      Thread.setDefaultUncaughtExceptionHandler( this );
+   }
+
+   public void stop() {
+      Thread.setDefaultUncaughtExceptionHandler( oldHandler );
    }
 
    @Override
@@ -64,6 +77,42 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
       return getUseConflicts( bundle );
    }
 
+   @Override
+   public Bundle getBundleForClass( final Class<?> clazz ) {
+      PackageAdmin admin = getPackageAdmin();
+      if( admin != null ) {
+         Bundle b = admin.getBundle( clazz );
+         if( b == null ) {
+            // must be the system bundle
+            return bundleContext.getBundle( 0 );
+         }
+         else {
+            return b;
+         }
+      }
+      return null;
+   }
+
+   @Override
+   public List<Bundle> getBundleForClassName( final String fqcn ) {
+      final List<Bundle> result = new ArrayList<Bundle>();
+      final List<Class<?>> classes = getClassesForName( fqcn );
+      for( Class<?> clazz : classes ) {
+         result.add( getBundleForClass( clazz ) );
+      }
+      return result;
+   }
+
+   @Override
+   public List<Bundle> getDependentBundles( Bundle bundle ) {
+      final Set<Bundle> result = new HashSet<Bundle>();
+      final BundleWiring wiring = bundle.adapt( BundleWiring.class );
+      for( BundleWire provided : wiring.getProvidedWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+         result.add( provided.getRequirerWiring().getBundle() );
+      }
+      return new ArrayList<Bundle>( result );
+   }
+
    private boolean containsExportForImport( Bundle bundle, ImportedPackage importedPackage ) {
       return getExportedPackage( bundle, importedPackage ) != null;
    }
@@ -86,7 +135,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
    private BundleWire getBundleWire( Bundle bundle, String packageName ) {
       try {
          BundleWire result = null;
-         final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+         final PackageAdmin packageAdmin = getPackageAdmin();
          final BundleWiring wiring = bundle.adapt( BundleWiring.class );
          for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
             final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
@@ -105,6 +154,35 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
       catch( Exception exception ) {
          throw new RuntimeException( String.format( "Failed to determine bundle wiring for bundle: %s Package: %s", bundle, packageName ), exception );
       }
+   }
+
+   /**
+    * get all possible class instance available in the OSGi container for a
+    * distinct full qualified class name.
+    *
+    * @param clazzName
+    *            full qualified class name like java.lang.Object
+    * @return guarantied to be not null (but might be empty though)
+    * @version 1.0
+    * @since 1.0
+    */
+   private List<Class<?>> getClassesForName( final String clazzName ) {
+      Bundle[] bundles = bundleContext.getBundles();
+      HashSet<Class<?>> classes = new HashSet<Class<?>>();
+      for( int i = 0; i < bundles.length; i++ ) {
+         // check if you can successfully load the class
+         try {
+            classes.add( bundles[i].loadClass( clazzName ) );
+            // add the class!!! (not the bundle) to the list of possible
+            // providers (bundle can delegate class loading to other bundles
+            // so only the Class - FQCN plus CL - is unique, thus use the
+            // HashSet to filter multiple providers of the same Class.
+         }
+         catch( ClassNotFoundException e ) {
+            // indicates no class available in this bundle -> do nothing!
+         }
+      }
+      return new ArrayList<Class<?>>( classes );
    }
 
    private com.springsource.util.osgi.manifest.ExportedPackage getExportedPackage( Bundle bundle, ImportedPackage importedPackage ) {
@@ -229,8 +307,8 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
       return getImportedPackages( bundle, Resolution.OPTIONAL );
    }
 
-   private PackageAdmin getPackageAdmin( BundleContext context ) {
-      final ServiceTracker<PackageAdmin, Object> packageAdminTracker = new ServiceTracker<PackageAdmin, Object>( context, PackageAdmin.class.getName(), null );
+   private PackageAdmin getPackageAdmin() {
+      final ServiceTracker<PackageAdmin, Object> packageAdminTracker = new ServiceTracker<PackageAdmin, Object>( bundleContext, PackageAdmin.class.getName(), null );
       packageAdminTracker.open();
       final PackageAdmin packageAdmin = ( PackageAdmin )packageAdminTracker.getService();
       return packageAdmin;
@@ -248,7 +326,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
 
    private List<UseConflict> getUseConflicts( Bundle bundle ) {
       final List<UseConflict> result = new ArrayList<UseConflict>();
-      final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+      final PackageAdmin packageAdmin = getPackageAdmin();
       if( !packageAdmin.resolveBundles( new Bundle[]{ bundle } ) ) {
          final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
          for( ImportedPackage importedPackage : importedPackages ) {
@@ -271,7 +349,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
       final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
       final ImportedPackage match = getMatchingImport( importedPackages, use );
       if( match != null ) {
-         final PackageAdmin packageAdmin = getPackageAdmin( bundleContext );
+         final PackageAdmin packageAdmin = getPackageAdmin();
          if( packageAdmin.resolveBundles( new Bundle[]{ useConflictBundle } ) ) {
             if( !isImportedPackageResolved( useConflictBundle, use ) ) {
                // ADD CONFLICT IF OPTIONAL PACKAGE NOT RESOLVED?
@@ -300,4 +378,17 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService {
       return getUnresolvedOptionalImportedPackages( bundle ).size() > 0;
    }
 
+   @Override
+   public void diagnose( Throwable exception ) {
+      // TODO Auto-generated method stub
+      System.out.println( "DIAGNOSE ME!!!!" );
+   }
+
+   @Override
+   public void uncaughtException( Thread thread, Throwable exception ) {
+
+      if( oldHandler != null ) {
+         oldHandler.uncaughtException( thread, exception );
+      }
+   }
 }

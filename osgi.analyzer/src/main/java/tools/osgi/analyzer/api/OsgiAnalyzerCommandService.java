@@ -1,11 +1,21 @@
 package tools.osgi.analyzer.api;
 
 import java.util.List;
+import java.util.Set;
+
+import javax.management.MBeanInfo;
+import javax.management.MBeanServer;
+import javax.management.ObjectInstance;
 
 import org.apache.felix.service.command.Descriptor;
 import org.apache.felix.service.command.Parameter;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.wiring.BundleRevision;
+import org.osgi.framework.wiring.BundleWire;
+import org.osgi.framework.wiring.BundleWiring;
+import org.osgi.framework.wiring.FrameworkWiring;
+import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
 import com.springsource.util.osgi.manifest.ImportedPackage;
@@ -41,11 +51,72 @@ public class OsgiAnalyzerCommandService {
       }
    }
 
-   @Descriptor("Diagnoses NoClassDefFoundError")
-   public void diagnose_ncdfe(
+   @Descriptor("Diagnoses potential issues with class")
+   public void diagnose_class(
+         @Descriptor("Verbose output of diagnosis") @Parameter(
+               names = { "-v", "--verbose" },
+               presentValue = "true",
+               absentValue = "false") boolean verbose,
          @Descriptor("Class name that got NoClassDefFoundError") String className
          ) {
+      try {
+         System.out.println( "Class:" + className );
+         final List<Bundle> bundles = getOsgiAnalyzerService().getBundleForClassName( className );
+         for( Bundle sourceBundle : bundles ) {
+            System.out.println( String.format( "Providing Bundle: %s(%s)", sourceBundle.getSymbolicName(), sourceBundle.getBundleId() ) );
+            for( Bundle refBundle : getOsgiAnalyzerService().getDependentBundles( sourceBundle ) ) {
+               final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
+               final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
+               try {
+                  refBundle.loadClass( className );
+                  System.out.println( String.format( "  %s(%s) successfully loaded class with classloader: %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+               }
+               catch( Exception exception ) {
+                  System.out.println( String.format( "  %s(%s) failed to load class with classloader, %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+                  if( verbose ) {
+                     exception.printStackTrace();
+                  }
 
+                  if( wiring != null ) {
+                     //                     wiring.getClassLoader().get
+                  }
+
+               }
+            }
+         }
+
+         // MBean Example
+         Set<ObjectInstance> beans = getMBeanServer().queryMBeans( null, null );
+         for( ObjectInstance instance : beans ) {
+            @SuppressWarnings("unused")
+            final MBeanInfo info = getMBeanServer().getMBeanInfo( instance.getObjectName() );
+            // System.out.println( info.getDescriptor() );
+         }
+
+         // Removal Pending
+         final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
+         for( Bundle removalPending : fw.getRemovalPendingBundles() ) {
+            System.out.println( String.format( "Removal Pending: %s(%s)", removalPending.getSymbolicName(), removalPending.getBundleId() ) );
+         }
+      }
+      catch( Exception exception ) {
+         exception.printStackTrace();
+         throw new RuntimeException( String.format( "Error diagnosing NoClassDefFoundError for class: %s", className ), exception );
+      }
+   }
+
+   private MBeanServer getMBeanServer() {
+      final ServiceTracker<MBeanServer, Object> packageAdminTracker = new ServiceTracker<MBeanServer, Object>( bundleContext, MBeanServer.class.getName(), null );
+      packageAdminTracker.open();
+      final MBeanServer result = ( MBeanServer )packageAdminTracker.getService();
+      return result;
+   }
+
+   private PackageAdmin getPackageAdmin() {
+      final ServiceTracker<PackageAdmin, Object> packageAdminTracker = new ServiceTracker<PackageAdmin, Object>( bundleContext, PackageAdmin.class.getName(), null );
+      packageAdminTracker.open();
+      final PackageAdmin result = ( PackageAdmin )packageAdminTracker.getService();
+      return result;
    }
 
    @Descriptor("Diagnoses issues with a specified bundle")

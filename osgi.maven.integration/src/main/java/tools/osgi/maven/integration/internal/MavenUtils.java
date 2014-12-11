@@ -1,5 +1,8 @@
 package tools.osgi.maven.integration.internal;
 
+import hudson.maven.MavenEmbedder;
+import hudson.maven.MavenRequest;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,10 +24,23 @@ import tools.osgi.maven.integration.internal.aether.Booter;
 
 public class MavenUtils {
 
-   public static List<Artifact> resolveDependencies( MavenProjectHolder holder ) {
+   public static RepositorySystemSession getRepositorySystemSession( ClassLoader classLoader ) {
+      try {
+         final MavenRequest mavenRequest = new MavenRequest();
+         final MavenEmbedder mavenEmbedder = new MavenEmbedder( classLoader, mavenRequest );
+         final RepositorySystem system = Booter.newRepositorySystem();
+         final RepositorySystemSession session = Booter.newRepositorySystemSession( system, new LocalRepository( mavenEmbedder.getLocalRepositoryPath() ) );
+         return session;
+      }
+      catch( Exception exception ) {
+         throw new RuntimeException( "Failed creating Repository System Session", exception );
+      }
+   }
+
+   public static List<Artifact> resolveDependencies( MavenProjectHolder holder, RepositorySystemSession sessionOverride ) {
       final List<Artifact> result = new ArrayList<Artifact>();
       final RepositorySystem system = Booter.newRepositorySystem();
-      final RepositorySystemSession session = Booter.newRepositorySystemSession( system, new LocalRepository( holder.getEmbedder().getLocalRepositoryPath() ) );
+      final RepositorySystemSession session = sessionOverride != null ? sessionOverride : Booter.newRepositorySystemSession( system, new LocalRepository( holder.getEmbedder().getLocalRepositoryPath() ) );
       for( Dependency dependency : holder.getProject().getDependencies() ) {
          try {
             org.eclipse.aether.artifact.Artifact filter = new org.eclipse.aether.artifact.DefaultArtifact( dependency.getGroupId(), dependency.getArtifactId(), dependency.getClassifier(), dependency.getType(), dependency.getVersion() );
@@ -46,5 +62,9 @@ public class MavenUtils {
          }
       }
       return result;
+   }
+
+   public static List<Artifact> resolveDependencies( MavenProjectHolder holder ) {
+      return resolveDependencies( holder, null );
    }
 }

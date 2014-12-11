@@ -15,4 +15,12 @@ public interface IOsgiAnalyzerService {
    List<Bundle> findBundlesWithMissingOptionalImports();
 
    List<ImportedPackage> findMissingOptionalImports( Bundle bundle );
+
+   List<Bundle> getBundleForClassName( String fqcn );
+
+   Bundle getBundleForClass( Class<?> clazz );
+
+   List<Bundle> getDependentBundles( Bundle bundle );
+
+   void diagnose( Throwable exception );
 }
