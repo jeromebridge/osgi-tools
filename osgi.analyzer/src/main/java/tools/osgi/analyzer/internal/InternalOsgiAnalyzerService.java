@@ -162,7 +162,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
     *
     * @param clazzName
     *            full qualified class name like java.lang.Object
-    * @return guarantied to be not null (but might be empty though)
+    * @return guaranteed to be not null (but might be empty though)
     * @version 1.0
     * @since 1.0
     */
@@ -273,19 +273,21 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
 
    private List<ImportedPackage> getImportedPackagesForExportUses( Bundle bundle, com.springsource.util.osgi.manifest.ExportedPackage exportedPackage, List<String> exclude ) {
       final List<ImportedPackage> result = new ArrayList<ImportedPackage>();
-      for( String use : exportedPackage.getUses() ) {
-         if( !exclude.contains( use ) ) {
-            final ImportedPackage importedPackage = getImportedPackage( bundle, use );
-            if( importedPackage != null ) {
-               result.add( importedPackage );
-               exclude.add( use );
-            }
-            else {
-               // Cascade Uses
-               final com.springsource.util.osgi.manifest.ExportedPackage cascadeExportedPackage = getExportedPackage( bundle, use );
-               if( cascadeExportedPackage != null ) {
+      if( exportedPackage != null ) {
+         for( String use : exportedPackage.getUses() ) {
+            if( !exclude.contains( use ) ) {
+               final ImportedPackage importedPackage = getImportedPackage( bundle, use );
+               if( importedPackage != null ) {
+                  result.add( importedPackage );
                   exclude.add( use );
-                  result.addAll( getImportedPackagesForExportUses( bundle, cascadeExportedPackage, exclude ) );
+               }
+               else {
+                  // Cascade Uses
+                  final com.springsource.util.osgi.manifest.ExportedPackage cascadeExportedPackage = getExportedPackage( bundle, use );
+                  if( cascadeExportedPackage != null ) {
+                     exclude.add( use );
+                     result.addAll( getImportedPackagesForExportUses( bundle, cascadeExportedPackage, exclude ) );
+                  }
                }
             }
          }
@@ -330,13 +332,53 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       if( !packageAdmin.resolveBundles( new Bundle[]{ bundle } ) ) {
          final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
          for( ImportedPackage importedPackage : importedPackages ) {
-            final Bundle match = findBestMatchThatSatisfiesImport( importedPackage );
-            if( match != null ) {
-               final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = getExportedPackage( match, importedPackage );
-               final List<ImportedPackage> uses = getImportedPackagesForExportUses( match, exportedPackage );
-               for( ImportedPackage use : uses ) {
-                  result.addAll( getHeaderUseConflicts( bundle, match, use ) );
-                  result.addAll( getWiringUseConflicts( bundle, match, use ) );
+            result.addAll( getUseConflicts( bundle, importedPackage ) );
+         }
+      }
+      return result;
+   }
+
+   /**
+    * @param bundle Bundle to find use conflicts on
+    * @param importedPackage Import Package from the bundle to check for conflicts down the dependency tree
+    * @param alreadyChecked Bundles that are already checked
+    * @return List of all Use Conflicts found recursively
+    */
+   private List<UseConflict> getUseConflicts( Bundle bundle, ImportedPackage importedPackage ) {
+      final List<UseConflict> result = new ArrayList<UseConflict>();
+      final Bundle match = findBestMatchThatSatisfiesImport( importedPackage );
+      if( match != null ) {
+         result.addAll( getUseConflicts( bundle, match, importedPackage, new ArrayList<Bundle>() ) );
+      }
+      return result;
+   }
+
+   /**
+    * @param bundle Bundle being checked for use conflicts
+    * @param useConflictBundle Bundle down the dependency chain of the bundle being checked
+    * @param importedPackage Import of the bundle being checked that started the dependency chain of the useConflictBundle
+    * @param alreadyChecked List of bundles that have already been checked
+    * @return List of use conflicts for the bundle combination
+    */
+   private List<UseConflict> getUseConflicts( Bundle bundle, Bundle useConflictBundle, ImportedPackage importedPackage, List<Bundle> alreadyChecked ) {
+      final List<UseConflict> result = new ArrayList<UseConflict>();
+      if( useConflictBundle != null && importedPackage != null && !alreadyChecked.contains( useConflictBundle ) ) {
+         alreadyChecked.add( useConflictBundle );
+         final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = getExportedPackage( useConflictBundle, importedPackage );
+         final List<ImportedPackage> uses = getImportedPackagesForExportUses( useConflictBundle, exportedPackage );
+         for( ImportedPackage use : uses ) {
+            result.addAll( getHeaderUseConflicts( bundle, useConflictBundle, use ) );
+            result.addAll( getWiringUseConflicts( bundle, useConflictBundle, use ) );
+         }
+
+         // Secondary Dependencies
+         final BundleWiring wiring = useConflictBundle.adapt( BundleWiring.class );
+         if( wiring != null ) {
+            for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+               if( required.getProviderWiring() != null ) {
+                  final Bundle secondaryUseConflictBundle = required.getProviderWiring().getBundle();
+                  final ImportedPackage secondaryImportedPackage = getImportedPackageForBundleWire( useConflictBundle, required );
+                  result.addAll( getUseConflicts( bundle, secondaryUseConflictBundle, secondaryImportedPackage, alreadyChecked ) );
                }
             }
          }
@@ -344,21 +386,59 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return result;
    }
 
+   private ImportedPackage getImportedPackageForBundleWire( Bundle bundle, BundleWire required ) {
+      ImportedPackage result = null;
+      for( ImportedPackage importedPackage : getImportedPackages( bundle ) ) {
+         final String filter = required.getRequirement().getDirectives().get( "filter" );
+         final String packageFilter = String.format( "(osgi.wiring.package=%s)", importedPackage.getPackageName() );
+         if( filter != null && filter.contains( packageFilter ) ) {
+            result = importedPackage;
+            break;
+         }
+      }
+      return result;
+   }
+
    private List<UseConflict> getWiringUseConflicts( Bundle bundle, Bundle useConflictBundle, ImportedPackage use ) {
+      return getWiringUseConflicts( bundle, useConflictBundle, use, new ArrayList<Bundle>() );
+   }
+
+   /**
+    * @param bundle Bundle that will not start because of a use conflict
+    * @param useConflictBundle Bundle that satisfies an import of the bundle that will not start
+    * @param use Use Import that could be causing the use conflict
+    * @param alreadyChecked List of bundles that have already been checked
+    * @return All Use Conflicts found with the wiring of the potential use conflict bundle
+    */
+   private List<UseConflict> getWiringUseConflicts( Bundle bundle, Bundle useConflictBundle, ImportedPackage use, List<Bundle> alreadyChecked ) {
       final List<UseConflict> result = new ArrayList<UseConflict>();
-      final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
-      final ImportedPackage match = getMatchingImport( importedPackages, use );
-      if( match != null ) {
-         final PackageAdmin packageAdmin = getPackageAdmin();
-         if( packageAdmin.resolveBundles( new Bundle[]{ useConflictBundle } ) ) {
-            if( !isImportedPackageResolved( useConflictBundle, use ) ) {
-               // ADD CONFLICT IF OPTIONAL PACKAGE NOT RESOLVED?
+      if( !alreadyChecked.contains( useConflictBundle ) ) {
+         alreadyChecked.add( useConflictBundle );
+         final List<ImportedPackage> importedPackages = getImportedPackages( bundle );
+         final ImportedPackage match = getMatchingImport( importedPackages, use );
+         if( match != null ) {
+            final PackageAdmin packageAdmin = getPackageAdmin();
+            if( packageAdmin.resolveBundles( new Bundle[]{ useConflictBundle } ) ) {
+               if( !isImportedPackageResolved( useConflictBundle, use ) ) {
+                  // ADD CONFLICT IF OPTIONAL PACKAGE NOT RESOLVED?
+               }
+               final BundleWire wiring = getBundleWire( useConflictBundle, use.getPackageName() );
+               if( wiring != null ) {
+                  if( !containsExportForImport( wiring.getProviderWiring().getBundle(), match ) ) {
+                     final com.springsource.util.osgi.manifest.ExportedPackage useConflictExportPackage = getExportedPackage( wiring.getProviderWiring().getBundle(), match.getPackageName() );
+                     result.add( new UseConflict( bundle, match, useConflictBundle, useConflictExportPackage ) );
+                  }
+               }
             }
-            final BundleWire wiring = getBundleWire( useConflictBundle, use.getPackageName() );
+         }
+         else {
+            final BundleWiring wiring = useConflictBundle.adapt( BundleWiring.class );
             if( wiring != null ) {
-               if( !containsExportForImport( wiring.getProviderWiring().getBundle(), match ) ) {
-                  final com.springsource.util.osgi.manifest.ExportedPackage useConflictExportPackage = getExportedPackage( wiring.getProviderWiring().getBundle(), match.getPackageName() );
-                  result.add( new UseConflict( bundle, match, useConflictBundle, useConflictExportPackage ) );
+               for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+                  if( required.getProviderWiring() != null ) {
+                     final Bundle secondaryUseConflictBundle = required.getProviderWiring().getBundle();
+                     result.addAll( getWiringUseConflicts( bundle, secondaryUseConflictBundle, use, alreadyChecked ) );
+                  }
                }
             }
          }
