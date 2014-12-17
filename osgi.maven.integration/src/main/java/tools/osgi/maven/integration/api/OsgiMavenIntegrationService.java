@@ -48,6 +48,7 @@ import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleImportRequirement;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.ObrUtils;
@@ -79,9 +80,17 @@ public class OsgiMavenIntegrationService {
                names = { "-r", "--reinstall" },
                presentValue = "true",
                absentValue = "false") boolean reinstall,
+         @Descriptor("Refresh Use Conflict bundles") @Parameter(
+               names = { "-ru", "--refresh-use-conflicts" },
+               presentValue = "true",
+               absentValue = "false") boolean refreshUseConflicts,
+         @Descriptor("Dependencies Only") @Parameter(
+               names = { "-do", "--dependencies-only" },
+               presentValue = "true",
+               absentValue = "false") boolean dependenciesOnly,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, reinstall, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, workspacePath, null );
    }
 
    @Descriptor("Analyzes the state of the OSGi container")
@@ -98,6 +107,14 @@ public class OsgiMavenIntegrationService {
                names = { "-r", "--reinstall" },
                presentValue = "true",
                absentValue = "false") boolean reinstall,
+         @Descriptor("Refresh Use Conflict bundles") @Parameter(
+               names = { "-ru", "--refresh-use-conflicts" },
+               presentValue = "true",
+               absentValue = "false") boolean refreshUseConflicts,
+         @Descriptor("Dependencies Only") @Parameter(
+               names = { "-do", "--dependencies-only" },
+               presentValue = "true",
+               absentValue = "false") boolean dependenciesOnly,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
          @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
@@ -154,21 +171,23 @@ public class OsgiMavenIntegrationService {
          final List<Bundle> installedBundles = new ArrayList<Bundle>();
          if( deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
-               try {
-                  final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
-                  if( existing != null ) {
-                     existing.update();
-                     installedBundles.add( existing );
-                     System.out.println( String.format( "Updated Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+               if( !dependenciesOnly || plan instanceof MavenDependencyBundleDeploymentPlan ) {
+                  try {
+                     final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+                     if( existing != null ) {
+                        existing.update();
+                        installedBundles.add( existing );
+                        System.out.println( String.format( "Updated Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+                     }
+                     else {
+                        final Bundle bundle = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
+                        installedBundles.add( bundle );
+                        System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                     }
                   }
-                  else {
-                     final Bundle bundle = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
-                     installedBundles.add( bundle );
-                     System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                  catch( Exception exception ) {
+                     System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );
                   }
-               }
-               catch( Exception exception ) {
-                  System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );
                }
             }
          }
@@ -187,7 +206,7 @@ public class OsgiMavenIntegrationService {
                bundle.start();
             }
             catch( Exception exception ) {
-               if( isUseConflict( bundle ) ) {
+               if( refreshUseConflicts && isUseConflict( bundle ) ) {
                   try {
                      refreshBundleWithUseConflicts( bundle );
                      bundle.start();
@@ -429,6 +448,9 @@ public class OsgiMavenIntegrationService {
          if( verbose ) {
             for( BundleImportRequirement importRequirement : plan.getImportRequirements() ) {
                System.out.println( "   " + importRequirement );
+            }
+            for( MavenProjectBundleDeploymentPlan dependent : deploymentPlan.getDependentMavenProjectBundleDeploymentPlans( plan ) ) {
+               System.out.println( "   Maven Project Reference: " + dependent );
             }
          }
       }

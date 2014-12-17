@@ -15,8 +15,6 @@ import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.util.tracker.ServiceTracker;
 
-import com.springsource.util.osgi.manifest.ImportedPackage;
-
 public class OsgiAnalyzerCommandService {
 
    private BundleContext bundleContext;
@@ -40,11 +38,17 @@ public class OsgiAnalyzerCommandService {
                presentValue = "true",
                absentValue = "false") boolean includeAll
          ) {
-      if( includeMissingDependencies || includeAll ) {
-         printBundlesWithMissingDependencies();
+      try {
+         if( includeMissingDependencies || includeAll ) {
+            printBundlesWithMissingDependencies();
+         }
+         if( includeUseConflicts || includeAll ) {
+            printBundlesWithUseConflicts();
+         }
       }
-      if( includeUseConflicts || includeAll ) {
-         printBundlesWithUseConflicts();
+      catch( Exception exception ) {
+         exception.printStackTrace();
+         throw new RuntimeException( String.format( "Error analyzing OSGi container" ), exception );
       }
    }
 
@@ -114,7 +118,7 @@ public class OsgiAnalyzerCommandService {
          @Descriptor("Bundle ID to diagnose issues") String bundleId
          ) {
       // Get Bundle
-      final Bundle bundle = bundleContext.getBundle( Long.valueOf( bundleId ) );
+      final Bundle bundle = getBundleByNameOrId( bundleId );
       if( bundle == null ) {
          throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
       }
@@ -123,6 +127,33 @@ public class OsgiAnalyzerCommandService {
       System.out.println( "Bundle: " + bundle );
       printUnresolvedImports( bundle );
       printUseConflicts( bundle );
+   }
+
+   private Bundle getBundleByNameOrId( String bundleId ) {
+      Bundle result = null;
+      if( isLong( bundleId ) ) {
+         bundleContext.getBundle( Long.valueOf( bundleId ) );
+      }
+      else {
+         for( Bundle bundle : bundleContext.getBundles() ) {
+            if( bundle.getSymbolicName().equals( bundleId ) ) {
+               result = bundle;
+               break;
+            }
+         }
+      }
+      return result;
+   }
+
+   private boolean isLong( String value ) {
+      boolean result = true;
+      try {
+         Long.parseLong( value );
+      }
+      catch( Throwable exception ) {
+         result = false;
+      }
+      return result;
    }
 
    private IOsgiAnalyzerService getOsgiAnalyzerService() {
@@ -171,15 +202,18 @@ public class OsgiAnalyzerCommandService {
    }
 
    private void printUnresolvedImports( Bundle bundle ) {
-      final List<ImportedPackage> unresolvedImports = getOsgiAnalyzerService().findMissingOptionalImports( bundle );
+      final List<MissingOptionalImport> unresolvedImports = getOsgiAnalyzerService().findMissingOptionalImports( bundle );
       if( unresolvedImports.size() > 0 ) {
-         final String format = "| %1$-35s| %2$-35s|";
-         final String line = new String( new char[String.format( format, "", "" ).length()] ).replace( "\0", "-" );
+         final String format = "| %1$-35s | %2$-25s | %3$-25s |";
+         final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
          System.out.println( line );
-         System.out.println( String.format( format, "Unresolved Import", "Version" ) );
+         System.out.println( String.format( format, "Unresolved Import", "Version", "Reason" ) );
          System.out.println( line );
-         for( ImportedPackage importedPackage : unresolvedImports ) {
-            System.out.println( String.format( format, importedPackage.getPackageName(), importedPackage.getVersion().toString() ) );
+         for( MissingOptionalImport missingOptionalImport : unresolvedImports ) {
+            final String packageName = missingOptionalImport.getImportedPackage().getPackageName();
+            final String version = missingOptionalImport.getImportedPackage().getVersion().toString();
+            final String reason = missingOptionalImport.getReason().name();
+            System.out.println( String.format( format, packageName, version, reason ) );
          }
          System.out.println( line );
       }

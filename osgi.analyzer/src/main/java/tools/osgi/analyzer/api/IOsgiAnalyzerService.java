@@ -4,8 +4,6 @@ import java.util.List;
 
 import org.osgi.framework.Bundle;
 
-import com.springsource.util.osgi.manifest.ImportedPackage;
-
 public interface IOsgiAnalyzerService {
 
    List<Bundle> findBundlesWithUseConflicts();
@@ -14,7 +12,7 @@ public interface IOsgiAnalyzerService {
 
    List<Bundle> findBundlesWithMissingOptionalImports();
 
-   List<ImportedPackage> findMissingOptionalImports( Bundle bundle );
+   List<MissingOptionalImport> findMissingOptionalImports( Bundle bundle );
 
    List<Bundle> getBundleForClassName( String fqcn );
 

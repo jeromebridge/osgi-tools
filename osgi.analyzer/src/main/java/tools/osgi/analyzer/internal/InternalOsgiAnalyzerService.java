@@ -17,6 +17,8 @@ import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
+import tools.osgi.analyzer.api.MissingOptionalImport;
+import tools.osgi.analyzer.api.MissingOptionalImportReasonType;
 import tools.osgi.analyzer.api.UseConflict;
 
 import com.springsource.util.osgi.VersionRange;
@@ -68,7 +70,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
    }
 
    @Override
-   public List<ImportedPackage> findMissingOptionalImports( Bundle bundle ) {
+   public List<MissingOptionalImport> findMissingOptionalImports( Bundle bundle ) {
       return getUnresolvedOptionalImportedPackages( bundle );
    }
 
@@ -137,16 +139,18 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
          BundleWire result = null;
          final PackageAdmin packageAdmin = getPackageAdmin();
          final BundleWiring wiring = bundle.adapt( BundleWiring.class );
-         for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
-            final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
-            for( ExportedPackage exportedPackage : exportedPackages ) {
-               if( packageName.equals( exportedPackage.getName() ) ) {
-                  result = required;
+         if( wiring != null ) {
+            for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+               final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
+               for( ExportedPackage exportedPackage : exportedPackages ) {
+                  if( packageName.equals( exportedPackage.getName() ) ) {
+                     result = required;
+                     break;
+                  }
+               }
+               if( result != null ) {
                   break;
                }
-            }
-            if( result != null ) {
-               break;
             }
          }
          return result;
@@ -316,13 +320,20 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return packageAdmin;
    }
 
-   private List<ImportedPackage> getUnresolvedOptionalImportedPackages( Bundle bundle ) {
-      final List<ImportedPackage> result = new ArrayList<ImportedPackage>();
+   private List<MissingOptionalImport> getUnresolvedOptionalImportedPackages( Bundle bundle ) {
+      final List<MissingOptionalImport> result = new ArrayList<MissingOptionalImport>();
       for( ImportedPackage importedPackage : getOptionalImportedPackages( bundle ) ) {
          if( !isImportedPackageResolved( bundle, importedPackage ) ) {
-            result.add( importedPackage );
+            result.add( getMissingOptionalImport( bundle, importedPackage ) );
          }
       }
+      return result;
+   }
+
+   private MissingOptionalImport getMissingOptionalImport( Bundle bundle, ImportedPackage importedPackage ) {
+      final MissingOptionalImport result = new MissingOptionalImport( importedPackage );
+      result.setReason( MissingOptionalImportReasonType.Unknown );
+      
       return result;
    }
 
