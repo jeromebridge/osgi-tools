@@ -13,10 +13,10 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleRevision;
 import org.osgi.framework.wiring.BundleWire;
 import org.osgi.framework.wiring.BundleWiring;
-import org.osgi.service.packageadmin.ExportedPackage;
 import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
+import tools.osgi.analyzer.api.BundleUtils;
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
 import tools.osgi.analyzer.api.MissingOptionalImport;
 import tools.osgi.analyzer.api.MissingOptionalImportReasonType;
@@ -29,7 +29,7 @@ import com.springsource.util.osgi.manifest.ImportedPackage;
 import com.springsource.util.osgi.manifest.Resolution;
 import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 
-@SuppressWarnings("deprecation")
+@SuppressWarnings({ "deprecation" })
 public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, UncaughtExceptionHandler {
 
    public static class BundleImportedPackage {
@@ -175,7 +175,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
    }
 
    private boolean containsExportForImport( Bundle bundle, ImportedPackage importedPackage ) {
-      return getExportedPackage( bundle, importedPackage ) != null;
+      return BundleUtils.getExportedPackage( bundle, importedPackage ) != null;
    }
 
    private Bundle findBestMatchThatSatisfiesImport( ImportedPackage importedPackage ) {
@@ -192,32 +192,6 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       }
       Collections.sort( result );
       return result;
-   }
-
-   private BundleWire getBundleWire( Bundle bundle, String packageName ) {
-      try {
-         BundleWire result = null;
-         final PackageAdmin packageAdmin = getPackageAdmin();
-         final BundleWiring wiring = bundle.adapt( BundleWiring.class );
-         if( wiring != null ) {
-            for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
-               final ExportedPackage[] exportedPackages = packageAdmin.getExportedPackages( required.getProviderWiring().getBundle() );
-               for( ExportedPackage exportedPackage : exportedPackages ) {
-                  if( packageName.equals( exportedPackage.getName() ) ) {
-                     result = required;
-                     break;
-                  }
-               }
-               if( result != null ) {
-                  break;
-               }
-            }
-         }
-         return result;
-      }
-      catch( Exception exception ) {
-         throw new RuntimeException( String.format( "Failed to determine bundle wiring for bundle: %s Package: %s", bundle, packageName ), exception );
-      }
    }
 
    /**
@@ -249,36 +223,13 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return new ArrayList<Class<?>>( classes );
    }
 
-   private com.springsource.util.osgi.manifest.ExportedPackage getExportedPackage( Bundle bundle, ImportedPackage importedPackage ) {
-      com.springsource.util.osgi.manifest.ExportedPackage result = null;
-      final List<com.springsource.util.osgi.manifest.ExportedPackage> exportedPackages = getExportedPackages( bundle );
-      for( com.springsource.util.osgi.manifest.ExportedPackage exportedPackage : exportedPackages ) {
-         if( exportedPackage.getPackageName().equals( importedPackage.getPackageName() ) ) {
-            if( importedPackage.getVersion().includes( exportedPackage.getVersion() ) ) {
-               result = exportedPackage;
-               break;
-            }
-         }
-      }
-      return result;
-   }
-
    private com.springsource.util.osgi.manifest.ExportedPackage getExportedPackage( Bundle bundle, String packageName ) {
       com.springsource.util.osgi.manifest.ExportedPackage result = null;
-      for( com.springsource.util.osgi.manifest.ExportedPackage exportedPackage : getExportedPackages( bundle ) ) {
+      for( com.springsource.util.osgi.manifest.ExportedPackage exportedPackage : BundleUtils.getExportedPackages( bundle ) ) {
          if( exportedPackage.getPackageName().equals( packageName ) ) {
             result = exportedPackage;
             break;
          }
-      }
-      return result;
-   }
-
-   private List<com.springsource.util.osgi.manifest.ExportedPackage> getExportedPackages( Bundle bundle ) {
-      final List<com.springsource.util.osgi.manifest.ExportedPackage> result = new ArrayList<com.springsource.util.osgi.manifest.ExportedPackage>();
-      final BundleManifest manifest = BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
-      for( com.springsource.util.osgi.manifest.ExportedPackage exportedPackage : manifest.getExportPackage().getExportedPackages() ) {
-         result.add( exportedPackage );
       }
       return result;
    }
@@ -289,7 +240,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       final ImportedPackage match = getMatchingImport( importedPackages, use );
       if( match != null ) {
          if( VersionRange.intersection( match.getVersion(), use.getVersion() ).isEmpty() ) {
-            result.add( new UseConflict( bundle, match, useConflictBundle, use ) );
+            result.add( new UseConflict( bundleContext, bundle, match, useConflictBundle, use ) );
          }
       }
       return result;
@@ -388,18 +339,16 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       final Bundle match = findBestMatchThatSatisfiesImport( importedPackage );
       if( match != null ) {
          result.setReason( MissingOptionalImportReasonType.RefreshRequired );
+         result.setMatch( match );
          final List<UseConflict> useConflicts = getUseConflicts( bundle, importedPackage );
          if( !useConflicts.isEmpty() ) {
             result.setReason( MissingOptionalImportReasonType.UseConflict );
+            result.setUseConflicts( useConflicts );
          }
       }
       else {
          result.setReason( MissingOptionalImportReasonType.Unavailable );
       }
-
-      // Find All Potential matches
-      // Use Conflict
-      // Refresh Required?
       return result;
    }
 
@@ -447,7 +396,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       if( useConflictBundleImport.getBundle() != null && useConflictBundleImport.getImportedPackage() != null && !alreadyChecked.contains( useConflictBundleImport ) ) {
          alreadyChecked.add( useConflictBundleImport );
 
-         final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = getExportedPackage( useConflictBundleImport.getBundle(), useConflictBundleImport.getImportedPackage() );
+         final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = BundleUtils.getExportedPackage( useConflictBundleImport.getBundle(), useConflictBundleImport.getImportedPackage() );
          final List<ImportedPackage> uses = getImportedPackagesForExportUses( useConflictBundleImport.getBundle(), exportedPackage );
          for( ImportedPackage use : uses ) {
             result.addAll( getHeaderUseConflicts( bundle, useConflictBundleImport.getBundle(), use ) );
@@ -508,18 +457,18 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
                if( !isImportedPackageResolved( useConflictBundle, use ) ) {
                   // ADD CONFLICT IF OPTIONAL PACKAGE NOT RESOLVED?
                }
-               final BundleWire useConflictWire = getBundleWire( useConflictBundle, use.getPackageName() );
+               final BundleWire useConflictWire = BundleUtils.getBundleWire( bundleContext, useConflictBundle, use.getPackageName() );
                if( useConflictWire != null ) {
                   if( !containsExportForImport( useConflictWire.getProviderWiring().getBundle(), match ) ) {
                      final com.springsource.util.osgi.manifest.ExportedPackage useConflictExportPackage = getExportedPackage( useConflictWire.getProviderWiring().getBundle(), match.getPackageName() );
-                     result.add( new UseConflict( bundle, match, useConflictBundle, useConflictExportPackage ) );
+                     result.add( new UseConflict( bundleContext, bundle, match, useConflictBundle, useConflictExportPackage ) );
                   }
                   else {
-                     final BundleWire wiring = getBundleWire( bundle, match.getPackageName() );
+                     final BundleWire wiring = BundleUtils.getBundleWire( bundleContext, bundle, match.getPackageName() );
                      if( wiring != null ) {
-                        if( wiring.getProviderWiring().getBundle().equals( useConflictWire.getProviderWiring().getBundle() ) ) {
+                        if( !wiring.getProviderWiring().getBundle().equals( useConflictWire.getProviderWiring().getBundle() ) ) {
                            final com.springsource.util.osgi.manifest.ExportedPackage useConflictExportPackage = getExportedPackage( useConflictWire.getProviderWiring().getBundle(), match.getPackageName() );
-                           result.add( new UseConflict( bundle, match, useConflictBundle, useConflictExportPackage ) );
+                           result.add( new UseConflict( bundleContext, bundle, match, useConflictBundle, useConflictExportPackage ) );
                         }
                      }
                   }
@@ -546,7 +495,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
    }
 
    private boolean isImportedPackageResolved( Bundle bundle, ImportedPackage importedPackage ) {
-      return getBundleWire( bundle, importedPackage.getPackageName() ) != null;
+      return BundleUtils.getBundleWire( bundleContext, bundle, importedPackage.getPackageName() ) != null;
    }
 
    private boolean isRefreshRequired( Bundle bundle ) {

@@ -1,5 +1,6 @@
 package tools.osgi.analyzer.api;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -115,18 +116,28 @@ public class OsgiAnalyzerCommandService {
 
    @Descriptor("Diagnoses issues with a specified bundle")
    public void diagnose(
+         @Descriptor("Print verbose messages") @Parameter(
+               names = { "-v", "--verbose" },
+               presentValue = "true",
+               absentValue = "false") boolean verbose,
          @Descriptor("Bundle ID to diagnose issues") String bundleId
          ) {
-      // Get Bundle
-      final Bundle bundle = getBundleByNameOrId( bundleId );
-      if( bundle == null ) {
-         throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
-      }
+      try {
+         // Get Bundle
+         final Bundle bundle = getBundleByNameOrId( bundleId );
+         if( bundle == null ) {
+            throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
+         }
 
-      // Print
-      System.out.println( "Bundle: " + bundle );
-      printUnresolvedImports( bundle );
-      printUseConflicts( bundle );
+         // Print
+         System.out.println( "Bundle: " + bundle );
+         printUnresolvedImports( bundle, verbose );
+         printUseConflicts( bundle, verbose );
+      }
+      catch( Throwable exception ) {
+         exception.printStackTrace();
+         throw new RuntimeException( String.format( "Error diagnosing bundle: %s", bundleId ), exception );
+      }
    }
 
    private Bundle getBundleByNameOrId( String bundleId ) {
@@ -201,25 +212,68 @@ public class OsgiAnalyzerCommandService {
       }
    }
 
-   private void printUnresolvedImports( Bundle bundle ) {
+   private void printUnresolvedImports( Bundle bundle, boolean verbose ) {
       final List<MissingOptionalImport> unresolvedImports = getOsgiAnalyzerService().findMissingOptionalImports( bundle );
       if( unresolvedImports.size() > 0 ) {
-         final String format = "| %1$-35s | %2$-25s | %3$-25s |";
-         final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
+         final String format = "| %1$-35s | %2$-15s | %3$-13s | %4$-50s |";
+         final String line = new String( new char[String.format( format, "", "", "", "" ).length()] ).replace( "\0", "-" );
          System.out.println( line );
-         System.out.println( String.format( format, "Unresolved Import", "Version", "Reason" ) );
+         System.out.println( String.format( format, "Unresolved Import", "Version", "Reason", "Matching Bundle" ) );
          System.out.println( line );
          for( MissingOptionalImport missingOptionalImport : unresolvedImports ) {
             final String packageName = missingOptionalImport.getImportedPackage().getPackageName();
             final String version = missingOptionalImport.getImportedPackage().getVersion().toString();
             final String reason = missingOptionalImport.getReason().display();
-            System.out.println( String.format( format, packageName, version, reason ) );
+            final String matchDesc = missingOptionalImport.getMatch() != null ? String.format( "%s(%s)", missingOptionalImport.getMatch().getSymbolicName(), missingOptionalImport.getMatch().getBundleId() ) : "[NONE]";
+            System.out.println( String.format( format, packageName, version, reason, matchDesc ) );
          }
          System.out.println( line );
+         System.out.println( "" );
+         System.out.println( "" );
+
+         for( MissingOptionalImport missingOptionalImport : unresolvedImports ) {
+            if( missingOptionalImport.getReason().isPossibleResolutionAvailable() ) {
+               final String packageName = missingOptionalImport.getImportedPackage().getPackageName();
+               System.out.println( line );
+               System.out.println( String.format( "Possible Resolutions: %s", packageName ) );
+               System.out.println( line );
+
+               System.out.println( String.format( "Reason: %s", missingOptionalImport.getReason().display() ) );
+               if( MissingOptionalImportReasonType.RefreshRequired.equals( missingOptionalImport.getReason() ) ) {
+                  System.out.println( String.format( "Resolution: Refresh %s(%s)", missingOptionalImport.getMatch().getSymbolicName(), missingOptionalImport.getMatch().getBundleId() ) );
+               }
+               else if( MissingOptionalImportReasonType.UseConflict.equals( missingOptionalImport.getReason() ) ) {
+                  if( verbose ) {
+                     int useConflictIndex = 1;
+                     for( UseConflict useConflict : missingOptionalImport.getUseConflicts() ) {
+                        System.out.println( String.format( "Use Conflict %s: %s(%s)", useConflictIndex, useConflict.getUseConflictBundle().getSymbolicName(), useConflict.getUseConflictBundle().getBundleId() ) );
+                        System.out.println( String.format( "   Type: %s", useConflict.getType().name() ) );
+                        System.out.println( String.format( "   Import Package: %s(%s)", useConflict.getImportedPackage().getPackageName(), useConflict.getImportedPackage().getVersion() ) );
+                        if( UseConflictType.Wiring.equals( useConflict.getType() ) ) {
+                           System.out.println( String.format( "   Bundle Wire: %s(%s)", useConflict.getBundleWire().getProviderWiring().getBundle().getSymbolicName(), useConflict.getBundleWire().getProviderWiring().getBundle().getBundleId() ) );
+                           System.out.println( String.format( "   Use Conflict Bundle Wire: %s(%s)", useConflict.getUseConflictBundleWire().getProviderWiring().getBundle().getSymbolicName(), useConflict.getUseConflictBundleWire().getProviderWiring().getBundle().getBundleId() ) );
+                        }
+                        useConflictIndex++;
+                     }
+                  }
+                  final Set<UseConflictResolutionSuggestion> suggestions = new HashSet<UseConflictResolutionSuggestion>();
+                  for( UseConflict useConflict : missingOptionalImport.getUseConflicts() ) {
+                     suggestions.add( useConflict.getSuggestion() );
+                  }
+                  for( UseConflictResolutionSuggestion suggestion : suggestions ) {
+                     System.out.println( String.format( "Suggestion: %s", suggestion ) );
+                  }
+               }
+
+               System.out.println( line );
+               System.out.println( "" );
+               System.out.println( "" );
+            }
+         }
       }
    }
 
-   private void printUseConflicts( Bundle bundle ) {
+   private void printUseConflicts( Bundle bundle, boolean verbose ) {
       final List<UseConflict> useConflicts = getOsgiAnalyzerService().findUseConflicts( bundle );
       if( useConflicts.size() > 0 ) {
          final String format = "| %1$-10s| %2$-45s| %3$-35s|%4$20s | %5$-28s| %6$-28s|";
