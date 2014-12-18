@@ -212,7 +212,7 @@ public class OsgiAnalyzerCommandService {
          for( MissingOptionalImport missingOptionalImport : unresolvedImports ) {
             final String packageName = missingOptionalImport.getImportedPackage().getPackageName();
             final String version = missingOptionalImport.getImportedPackage().getVersion().toString();
-            final String reason = missingOptionalImport.getReason().name();
+            final String reason = missingOptionalImport.getReason().display();
             System.out.println( String.format( format, packageName, version, reason ) );
          }
          System.out.println( line );
