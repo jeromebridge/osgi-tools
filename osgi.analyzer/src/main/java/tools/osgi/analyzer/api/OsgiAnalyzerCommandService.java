@@ -143,7 +143,7 @@ public class OsgiAnalyzerCommandService {
    private Bundle getBundleByNameOrId( String bundleId ) {
       Bundle result = null;
       if( isLong( bundleId ) ) {
-         bundleContext.getBundle( Long.valueOf( bundleId ) );
+         result = bundleContext.getBundle( Long.valueOf( bundleId ) );
       }
       else {
          for( Bundle bundle : bundleContext.getBundles() ) {
