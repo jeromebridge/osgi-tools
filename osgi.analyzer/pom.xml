@@ -57,7 +57,7 @@
     </distributionManagement>
 
     <dependencies>
-    
+
         <!-- SLF4J -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -105,6 +105,15 @@
             <artifactId>com.springsource.util.osgi</artifactId>
             <version>${springsource.util.version}</version>
         </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
