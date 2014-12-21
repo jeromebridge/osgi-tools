@@ -213,14 +213,14 @@ public class OsgiAnalyzerCommandService {
    }
 
    private void printUnresolvedImports( Bundle bundle, boolean verbose ) {
-      final List<MissingOptionalImport> unresolvedImports = getOsgiAnalyzerService().findMissingOptionalImports( bundle );
+      final List<MissingImport> unresolvedImports = getOsgiAnalyzerService().findMissingOptionalImports( bundle );
       if( unresolvedImports.size() > 0 ) {
          final String format = "| %1$-35s | %2$-15s | %3$-16s | %4$-50s |";
          final String line = new String( new char[String.format( format, "", "", "", "" ).length()] ).replace( "\0", "-" );
          System.out.println( line );
          System.out.println( String.format( format, "Unresolved Import", "Version", "Reason", "Matching Bundle" ) );
          System.out.println( line );
-         for( MissingOptionalImport missingOptionalImport : unresolvedImports ) {
+         for( MissingImport missingOptionalImport : unresolvedImports ) {
             final String packageName = missingOptionalImport.getImportedPackage().getPackageName();
             final String version = missingOptionalImport.getImportedPackage().getVersion().toString();
             final String reason = missingOptionalImport.getReason().display();
@@ -232,7 +232,7 @@ public class OsgiAnalyzerCommandService {
          System.out.println( "" );
 
          final Set<UseConflictResolutionSuggestion> suggestions = new HashSet<UseConflictResolutionSuggestion>();
-         for( MissingOptionalImport missingOptionalImport : unresolvedImports ) {
+         for( MissingImport missingOptionalImport : unresolvedImports ) {
             if( missingOptionalImport.getReason().isPossibleResolutionAvailable() ) {
                if( verbose ) {
                   System.out.println( String.format( "Package: %s Reason: %s", missingOptionalImport.getImportedPackage().getPackageName(), missingOptionalImport.getReason().display() ) );

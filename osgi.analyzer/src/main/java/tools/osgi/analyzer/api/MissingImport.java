@@ -7,8 +7,8 @@ import org.osgi.framework.Bundle;
 
 import com.springsource.util.osgi.manifest.ImportedPackage;
 
-/** Defines imports that are optional and not resolved along with the potential reason for the missing import */
-public class MissingOptionalImport {
+/** Defines imports that are not resolved along with the potential reason for the missing import */
+public class MissingImport {
    private ImportedPackage importedPackage;
    private MissingOptionalImportReasonType reason = MissingOptionalImportReasonType.Null;
    private List<UseConflict> useConflicts = new ArrayList<UseConflict>();
@@ -38,7 +38,7 @@ public class MissingOptionalImport {
       this.reason = reason;
    }
 
-   public MissingOptionalImport( ImportedPackage importedPackage ) {
+   public MissingImport( ImportedPackage importedPackage ) {
       setImportedPackage( importedPackage );
    }
 

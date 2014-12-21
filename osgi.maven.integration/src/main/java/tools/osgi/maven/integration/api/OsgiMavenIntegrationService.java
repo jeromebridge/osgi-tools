@@ -73,7 +73,7 @@ public class OsgiMavenIntegrationService {
                presentValue = "true",
                absentValue = "false") boolean verbose,
          @Descriptor("Print deployment plan only") @Parameter(
-               names = { "-p", "--plan-only" },
+               names = { "-po", "--plan-only" },
                presentValue = "true",
                absentValue = "false") boolean planOnly,
          @Descriptor("Uninstall/Install existing project bundles") @Parameter(
@@ -88,9 +88,13 @@ public class OsgiMavenIntegrationService {
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
                absentValue = "false") boolean dependenciesOnly,
+         @Descriptor("Show Optional Imports (Unresolved)") @Parameter(
+               names = { "-oi", "--show-optional-imports" },
+               presentValue = "true",
+               absentValue = "false") boolean showOptionalImports,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, showOptionalImports, workspacePath, null );
    }
 
    @Descriptor("Analyzes the state of the OSGi container")
@@ -100,7 +104,7 @@ public class OsgiMavenIntegrationService {
                presentValue = "true",
                absentValue = "false") boolean verbose,
          @Descriptor("Print deployment plan only") @Parameter(
-               names = { "-p", "--plan-only" },
+               names = { "-po", "--plan-only" },
                presentValue = "true",
                absentValue = "false") boolean planOnly,
          @Descriptor("Uninstall/Install existing project bundles") @Parameter(
@@ -115,6 +119,10 @@ public class OsgiMavenIntegrationService {
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
                absentValue = "false") boolean dependenciesOnly,
+         @Descriptor("Show Optional Imports (Unresolved)") @Parameter(
+               names = { "-oi", "--show-optional-imports" },
+               presentValue = "true",
+               absentValue = "false") boolean showOptionalImports,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
          @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
@@ -140,7 +148,7 @@ public class OsgiMavenIntegrationService {
          // Load Maven Projects
          final List<MavenProjectHolder> mavenProjects = getMavenProjects( workspaceFolder, projectFilter );
          final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects );
-         printDeploymentPlan( deploymentPlan, verbose );
+         printDeploymentPlan( deploymentPlan, showOptionalImports, verbose );
 
          // Plan Only
          if( planOnly ) {
@@ -440,7 +448,7 @@ public class OsgiMavenIntegrationService {
       return !getOsgiAnalyzerService().findUseConflicts( bundle ).isEmpty();
    }
 
-   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
+   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
       System.out.println( "Deployment Plan" );
       System.out.println( "===============================================" );
       for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
@@ -456,7 +464,9 @@ public class OsgiMavenIntegrationService {
       }
       System.out.println( "" );
       printUnresolved( deploymentPlan, verbose, Resolution.MANDATORY );
-      printUnresolved( deploymentPlan, verbose, Resolution.OPTIONAL );
+      if( showOptionalImports ) {
+         printUnresolved( deploymentPlan, verbose, Resolution.OPTIONAL );
+      }
    }
 
    @SuppressWarnings("unused")

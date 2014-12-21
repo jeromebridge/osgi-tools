@@ -18,7 +18,7 @@ import org.osgi.util.tracker.ServiceTracker;
 
 import tools.osgi.analyzer.api.BundleUtils;
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
-import tools.osgi.analyzer.api.MissingOptionalImport;
+import tools.osgi.analyzer.api.MissingImport;
 import tools.osgi.analyzer.api.MissingOptionalImportReasonType;
 import tools.osgi.analyzer.api.UseConflict;
 
@@ -112,8 +112,8 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
    }
 
    @Override
-   public List<MissingOptionalImport> findMissingOptionalImports( Bundle bundle ) {
-      return getUnresolvedOptionalImportedPackages( bundle );
+   public List<MissingImport> findMissingOptionalImports( Bundle bundle ) {
+      return getUnresolvedImportedPackages( bundle );
    }
 
    @Override
@@ -333,8 +333,8 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return result;
    }
 
-   private MissingOptionalImport getMissingOptionalImport( Bundle bundle, ImportedPackage importedPackage ) {
-      final MissingOptionalImport result = new MissingOptionalImport( importedPackage );
+   private MissingImport getMissingImport( Bundle bundle, ImportedPackage importedPackage ) {
+      final MissingImport result = new MissingImport( importedPackage );
       result.setReason( MissingOptionalImportReasonType.Unknown );
       final Bundle match = findBestMatchThatSatisfiesImport( importedPackage );
       if( match != null ) {
@@ -352,6 +352,7 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return result;
    }
 
+   @SuppressWarnings("unused")
    private List<ImportedPackage> getOptionalImportedPackages( Bundle bundle ) {
       return getImportedPackages( bundle, Resolution.OPTIONAL );
    }
@@ -363,11 +364,11 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return packageAdmin;
    }
 
-   private List<MissingOptionalImport> getUnresolvedOptionalImportedPackages( Bundle bundle ) {
-      final List<MissingOptionalImport> result = new ArrayList<MissingOptionalImport>();
-      for( ImportedPackage importedPackage : getOptionalImportedPackages( bundle ) ) {
+   private List<MissingImport> getUnresolvedImportedPackages( Bundle bundle ) {
+      final List<MissingImport> result = new ArrayList<MissingImport>();
+      for( ImportedPackage importedPackage : getImportedPackages( bundle ) ) {
          if( !isImportedPackageResolved( bundle, importedPackage ) ) {
-            result.add( getMissingOptionalImport( bundle, importedPackage ) );
+            result.add( getMissingImport( bundle, importedPackage ) );
          }
       }
       return result;
@@ -494,11 +495,22 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return getUseConflicts( bundle ).size() > 0;
    }
 
+   private boolean isBundleResolved( Bundle bundle ) {
+      return Bundle.RESOLVED == bundle.getState() || Bundle.ACTIVE == bundle.getState();
+   }
+
    private boolean isImportedPackageResolved( Bundle bundle, ImportedPackage importedPackage ) {
-      return BundleUtils.getBundleWire( bundleContext, bundle, importedPackage.getPackageName() ) != null;
+      boolean result = false;
+      if( isBundleResolved( bundle ) ) {
+         result = BundleUtils.getBundleWire( bundleContext, bundle, importedPackage.getPackageName() ) != null;
+      }
+      else {
+         result = findBestMatchThatSatisfiesImport( importedPackage ) != null;
+      }
+      return result;
    }
 
    private boolean isRefreshRequired( Bundle bundle ) {
-      return getUnresolvedOptionalImportedPackages( bundle ).size() > 0;
+      return getUnresolvedImportedPackages( bundle ).size() > 0;
    }
 }

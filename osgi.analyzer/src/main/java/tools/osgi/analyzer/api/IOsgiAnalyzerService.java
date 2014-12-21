@@ -12,7 +12,7 @@ public interface IOsgiAnalyzerService {
 
    List<Bundle> findBundlesWithMissingOptionalImports();
 
-   List<MissingOptionalImport> findMissingOptionalImports( Bundle bundle );
+   List<MissingImport> findMissingOptionalImports( Bundle bundle );
 
    List<Bundle> getBundleForClassName( String fqcn );
 
