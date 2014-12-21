@@ -1,6 +1,8 @@
 package osgi.analyzer.test;
 
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -31,6 +33,14 @@ public class TestManifestCompare {
          if( !isImportPackage( manifest1, importedPackage.getPackageName() ) ) {
             System.out.println( "Added Import: " + importedPackage );
          }
+      }
+
+      final List<String> importPackagesFound = new ArrayList<String>();
+      for( ImportedPackage importedPackage : manifest2.getImportPackage().getImportedPackages() ) {
+         if( importPackagesFound.contains( importedPackage.getPackageName() ) ) {
+            System.out.println( "Duplicate Import: " + importedPackage.getPackageName() );
+         }
+         importPackagesFound.add( importedPackage.getPackageName() );
       }
    }
 

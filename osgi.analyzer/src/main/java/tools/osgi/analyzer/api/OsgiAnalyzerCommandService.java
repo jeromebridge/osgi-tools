@@ -215,7 +215,7 @@ public class OsgiAnalyzerCommandService {
    private void printUnresolvedImports( Bundle bundle, boolean verbose ) {
       final List<MissingOptionalImport> unresolvedImports = getOsgiAnalyzerService().findMissingOptionalImports( bundle );
       if( unresolvedImports.size() > 0 ) {
-         final String format = "| %1$-35s | %2$-15s | %3$-13s | %4$-50s |";
+         final String format = "| %1$-35s | %2$-15s | %3$-16s | %4$-50s |";
          final String line = new String( new char[String.format( format, "", "", "", "" ).length()] ).replace( "\0", "-" );
          System.out.println( line );
          System.out.println( String.format( format, "Unresolved Import", "Version", "Reason", "Matching Bundle" ) );
@@ -231,16 +231,16 @@ public class OsgiAnalyzerCommandService {
          System.out.println( "" );
          System.out.println( "" );
 
+         final Set<UseConflictResolutionSuggestion> suggestions = new HashSet<UseConflictResolutionSuggestion>();
          for( MissingOptionalImport missingOptionalImport : unresolvedImports ) {
             if( missingOptionalImport.getReason().isPossibleResolutionAvailable() ) {
-               final String packageName = missingOptionalImport.getImportedPackage().getPackageName();
-               System.out.println( line );
-               System.out.println( String.format( "Possible Resolutions: %s", packageName ) );
-               System.out.println( line );
-
-               System.out.println( String.format( "Reason: %s", missingOptionalImport.getReason().display() ) );
+               if( verbose ) {
+                  System.out.println( String.format( "Package: %s Reason: %s", missingOptionalImport.getImportedPackage().getPackageName(), missingOptionalImport.getReason().display() ) );
+               }
                if( MissingOptionalImportReasonType.RefreshRequired.equals( missingOptionalImport.getReason() ) ) {
-                  System.out.println( String.format( "Resolution: Refresh %s(%s)", missingOptionalImport.getMatch().getSymbolicName(), missingOptionalImport.getMatch().getBundleId() ) );
+                  if( verbose ) {
+                     System.out.println( String.format( "Resolution: Refresh %s(%s)", missingOptionalImport.getMatch().getSymbolicName(), missingOptionalImport.getMatch().getBundleId() ) );
+                  }
                }
                else if( MissingOptionalImportReasonType.UseConflict.equals( missingOptionalImport.getReason() ) ) {
                   if( verbose ) {
@@ -256,18 +256,20 @@ public class OsgiAnalyzerCommandService {
                         useConflictIndex++;
                      }
                   }
-                  final Set<UseConflictResolutionSuggestion> suggestions = new HashSet<UseConflictResolutionSuggestion>();
                   for( UseConflict useConflict : missingOptionalImport.getUseConflicts() ) {
                      suggestions.add( useConflict.getSuggestion() );
                   }
-                  for( UseConflictResolutionSuggestion suggestion : suggestions ) {
-                     System.out.println( String.format( "Suggestion: %s", suggestion ) );
-                  }
                }
+            }
+         }
 
-               System.out.println( line );
-               System.out.println( "" );
-               System.out.println( "" );
+         if( !suggestions.isEmpty() ) {
+            System.out.println( line );
+            System.out.println( String.format( "Possible Resolutions" ) );
+            System.out.println( line );
+
+            for( UseConflictResolutionSuggestion suggestion : suggestions ) {
+               System.out.println( String.format( "Suggestion: %s", suggestion ) );
             }
          }
       }
