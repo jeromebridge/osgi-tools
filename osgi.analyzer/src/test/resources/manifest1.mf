@@ -1,37 +1,773 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1419184247359
-Build-Jdk: 1.7.0_72
+Bundle-ClassPath: .,WEB-INF/classes,WEB-INF/lib/primefaces-4.0.jar,WEB
+ -INF/lib/all-themes-1.0.8.jar
 Built-By: developer
-Bundle-ManifestVersion: 2
-Bundle-Name: yaas-dto-ul
-Bundle-SymbolicName: com.yaas.module.yaas-dto-ul
-Bundle-Version: 1.0.0.M1
-Created-By: Apache Maven Bundle Plugin
-Export-Package: com.yaas.dto.ul.api.constants;version="1.0.0",com.yaas.d
- to.ul.api.type.risk;version="1.0.0";uses:="com.yaas.commons.api.enumera
- tion,com.yaas.commons.api.enumeration.annotation",com.yaas.dto.ul.api.x
- ml.coverage;version="1.0.0";uses:="com.yaas.config.api.bean.annotation,
- com.yaas.config.api.field.annotation,com.yaas.xml.api.extension,com.yaa
- s.xml.api.jaxb.adapter",com.yaas.dto.ul.api.xml.policy;version="1.0.0";
- uses:="com.yaas.commons.api.enumeration,com.yaas.commons.api.type,com.y
- aas.config.api.bean.annotation,com.yaas.config.api.clone.annotation,com
- .yaas.config.api.field.annotation,com.yaas.xml.api.extension,com.yaas.x
- ml.api.jaxb.adapter,org.springframework.beans.factory.aspectj"
-Import-Library: org.springframework.spring;version="[3.1.0.RELEASE,3.2.1
- 1.RELEASE]"
-Import-Package: org.springframework.beans.factory.aspectj;version="[3.2,
- 4)",org.aspectj.lang;version="[1.7,2)",org.aspectj.runtime.reflect;vers
- ion="[1.7,2)",com.yaas.commons.api.bundle.provider;version="[1.0,2)",co
- m.yaas.commons.api.enumeration;version="[1.0,2)",com.yaas.commons.api.e
- numeration.annotation;version="[1.0,2)",com.yaas.commons.api.type;versi
- on="[1.0,2)",com.yaas.xml.api.extension;version="[1.0,2)",com.yaas.xml.
- api.extension.registry;version="[1.0,2)",com.yaas.xml.api.jaxb.adapter;
- version="[1.0,2)",com.yaas.xml.api.jaxb.wrapper;version="[1.0,2)",com.y
- aas.config.api.bean;version="[1.0,2)",com.yaas.config.api.bean.annotati
- on;version="[1.0,2)",com.yaas.config.api.clone.annotation;version="[1.0
- ,2)",com.yaas.config.api.field.annotation;version="[1.0,2)",org.apache.
- commons.lang3;version="[3.1,4)",org.eclipse.persistence.jaxb;version="2
- .5.2",com.yaas.xml.api.jaxb.context;version="[1.0,2)",org.eclipse.persi
- stence.sessions;version="2.5.2",org.slf4j
-Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"
 Tool: Bnd-2.3.0.201405100607
+Bundle-Name: yaas-web
+Created-By: Apache Maven Bundle Plugin
+Web-ContextPath: yweb
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"
+Build-Jdk: 1.7.0_72
+Bundle-Version: 1.0.0.M1
+Embed-Transitive: false
+Bnd-LastModified: 1419275251194
+Bundle-ManifestVersion: 2
+Import-Package: org.springframework.asm;bundle-version="[3.2.11.RELEAS
+ E_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.b
+ undles.spring-core",com.yaas.xml.api.extension;version="[1.0,2)",org.
+ springframework.oxm;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE
+ _2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-oxm",
+ org.springframework.orm.jpa;bundle-version="[3.2.11.RELEASE_2, 3.2.11
+ .RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spri
+ ng-orm",org.springframework.aop.target;bundle-version="[3.2.11.RELEAS
+ E_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache.servicemix.b
+ undles.spring-aop",org.springframework.remoting.jaxrpc;bundle-version
+ ="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apa
+ che.servicemix.bundles.spring-web",com.sun.faces.application.annotati
+ on;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-
+ name="org.glassfish.com.sun.faces",org.springframework.aop.framework.
+ autoproxy.target;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]
+ ";bundle-symbolic-name="org.apache.servicemix.bundles.spring-aop",org
+ .springframework.beans.factory.support;bundle-version="[3.2.11.RELEAS
+ E_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.b
+ undles.spring-beans",com.sun.faces.facelets.compiler;bundle-version="
+ [2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish
+ .com.sun.faces",org.springframework.expression.spel.standard;bundle-v
+ ersion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="o
+ rg.apache.servicemix.bundles.spring-expression",org.springframework.o
+ xm.jibx;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-
+ symbolic-name="org.apache.servicemix.bundles.spring-oxm",org.springfr
+ amework.beans.factory.access;bundle-version="[3.2.11.RELEASE_2, 3.2.1
+ 1.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-beans",org.springframework.cache.transaction;bundle-version="[3.2
+ .11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.se
+ rvicemix.bundles.spring-context-support",org.springframework.jca.cont
+ ext;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-tx",com.sun.faces.el;
+ bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-nam
+ e="org.glassfish.com.sun.faces",org.springframework.orm.jpa.vendor;bu
+ ndle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-n
+ ame="org.apache.servicemix.bundles.spring-orm",org.springframework.jd
+ bc.core.metadata;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]
+ ";bundle-symbolic-name="org.apache.servicemix.bundles.spring-jdbc",or
+ g.springframework.jdbc.object;bundle-version="[3.2.11.RELEASE_2, 3.2.
+ 11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.sp
+ ring-jdbc",com.sun.faces.xhtml;bundle-version="[2.1.2.SNAPSHOT, 2.1.2
+ .SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",org.sp
+ ringframework.jca.cci.connection;bundle-version="[3.2.11.RELEASE_3, 3
+ .2.11.RELEASE_3]";bundle-symbolic-name="org.apache.servicemix.bundles
+ .spring-tx",org.springframework.jmx.export.notification;bundle-versio
+ n="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.ap
+ ache.servicemix.bundles.spring-context",org.springframework.validatio
+ n.annotation;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bu
+ ndle-symbolic-name="org.apache.servicemix.bundles.spring-context",org
+ .springframework.jdbc;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEA
+ SE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-jdb
+ c",org.springframework.ejb.support;bundle-version="[3.2.11.RELEASE_2,
+  3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundl
+ es.spring-context",org.springframework.jdbc.core.simple;bundle-versio
+ n="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.ap
+ ache.servicemix.bundles.spring-jdbc",org.springframework.ui.context;b
+ undle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-
+ name="org.apache.servicemix.bundles.spring-context",org.springframewo
+ rk.oxm.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";
+ bundle-symbolic-name="org.apache.servicemix.bundles.spring-oxm",org.s
+ pringframework.jmx.export.assembler;bundle-version="[3.2.11.RELEASE_2
+ , 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bund
+ les.spring-context",com.sun.faces.config;bundle-version="[2.1.2.SNAPS
+ HOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.fac
+ es",org.springframework.core.annotation;bundle-version="[3.2.11.RELEA
+ SE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.
+ bundles.spring-core",org.springframework.web.bind.annotation.support;
+ bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic
+ -name="org.apache.servicemix.bundles.spring-web",org.springframework.
+ context.config;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";
+ bundle-symbolic-name="org.apache.servicemix.bundles.spring-context",c
+ om.sun.faces.component.visit;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.S
+ NAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",com.sun.
+ faces.ext.validator;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]"
+ ;bundle-symbolic-name="org.glassfish.com.sun.faces",javax.faces.bean;
+ bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-nam
+ e="org.glassfish.com.sun.faces",org.springframework.mock.staticmock;b
+ undle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-
+ name="org.apache.servicemix.bundles.spring-aspects",javax.faces.compo
+ nent.behavior;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundl
+ e-symbolic-name="org.glassfish.com.sun.faces",org.springframework.mai
+ l.javamail;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bund
+ le-symbolic-name="org.apache.servicemix.bundles.spring-context-suppor
+ t",org.springframework.http.client.support;bundle-version="[3.2.11.RE
+ LEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicem
+ ix.bundles.spring-web",org.springframework.jdbc.datasource.embedded;b
+ undle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-
+ name="org.apache.servicemix.bundles.spring-jdbc",org.springframework.
+ core.task;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundl
+ e-symbolic-name="org.apache.servicemix.bundles.spring-core",org.sprin
+ gframework.cache.aspectj;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RE
+ LEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-
+ aspects",javax.faces.lifecycle;bundle-version="[2.1.2.SNAPSHOT, 2.1.2
+ .SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",org.sp
+ ringframework.web.portlet.mvc.annotation;bundle-version="[3.2.11.RELE
+ ASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix
+ .bundles.spring-webmvc-portlet",org.springframework.jdbc.core.support
+ ;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symboli
+ c-name="org.apache.servicemix.bundles.spring-jdbc",org.springframewor
+ k.jca.work.glassfish;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEAS
+ E_3]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-tx",
+ org.springframework.beans.factory.annotation;bundle-version="[3.2.11.
+ RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servic
+ emix.bundles.spring-beans",org.springframework.oxm.xmlbeans;bundle-ve
+ rsion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="or
+ g.apache.servicemix.bundles.spring-oxm",com.sun.faces.metadata.taglib
+ ;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-na
+ me="org.glassfish.com.sun.faces",org.springframework.beans.factory.co
+ nfig;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-sym
+ bolic-name="org.apache.servicemix.bundles.spring-beans",org.springfra
+ mework.orm.jpa.aspectj;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELE
+ ASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-as
+ pects",org.springframework.util.xml;bundle-version="[3.2.11.RELEASE_2
+ , 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bund
+ les.spring-core",org.springframework.context.annotation;bundle-versio
+ n="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.ap
+ ache.servicemix.bundles.spring-context",org.springframework.format.an
+ notation;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle
+ -symbolic-name="org.apache.servicemix.bundles.spring-context",org.spr
+ ingframework.remoting.support;bundle-version="[3.2.11.RELEASE_2, 3.2.
+ 11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.sp
+ ring-context",com.yaas.core.api.domain.lifecycle;version="[1.0,2)",or
+ g.springframework.scheduling.backportconcurrent;bundle-version="[3.2.
+ 11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.ser
+ vicemix.bundles.spring-context",javax.faces.webapp;bundle-version="[2
+ .1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.c
+ om.sun.faces",javax.faces.component.visit;bundle-version="[2.1.2.SNAP
+ SHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.fa
+ ces",org.springframework.jdbc.core;bundle-version="[3.2.11.RELEASE_2,
+  3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundl
+ es.spring-jdbc",javax.faces.convert;bundle-version="[2.1.2.SNAPSHOT, 
+ 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",o
+ rg.springframework.scheduling.aspectj;bundle-version="[3.2.11.RELEASE
+ _2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bu
+ ndles.spring-aspects",org.springframework.asm.util;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-core",org.springframework.cglib.reflect;bun
+ dle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-na
+ me="org.apache.servicemix.bundles.spring-core",org.springframework.ex
+ pression;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle
+ -symbolic-name="org.apache.servicemix.bundles.spring-expression",org.
+ springframework.http.server;bundle-version="[3.2.11.RELEASE_2, 3.2.11
+ .RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spri
+ ng-web",org.dom4j;version="[1.6,2)",com.sun.faces.config.configprovid
+ er;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-
+ name="org.glassfish.com.sun.faces",com.sun.faces.facelets.tag.jstl.fn
+ ;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-na
+ me="org.glassfish.com.sun.faces",org.springframework.web.filter;bundl
+ e-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name
+ ="org.apache.servicemix.bundles.spring-web",org.springframework.web.p
+ ortlet.bind;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bun
+ dle-symbolic-name="org.apache.servicemix.bundles.spring-webmvc-portle
+ t",org.springframework.ejb.config;bundle-version="[3.2.11.RELEASE_2, 
+ 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundle
+ s.spring-context",org.springframework.context.event;bundle-version="[
+ 3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache
+ .servicemix.bundles.spring-context",org.springframework.scheduling.an
+ notation;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle
+ -symbolic-name="org.apache.servicemix.bundles.spring-context",org.spr
+ ingframework.oxm.config;bundle-version="[3.2.11.RELEASE_2, 3.2.11.REL
+ EASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-o
+ xm",org.springframework.core.type.filter;bundle-version="[3.2.11.RELE
+ ASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix
+ .bundles.spring-core",org.springframework.jmx.support;bundle-version=
+ "[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apac
+ he.servicemix.bundles.spring-context",com.sun.faces.ext.render;bundle
+ -version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org
+ .glassfish.com.sun.faces",org.springframework.web.context.request.asy
+ nc;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbo
+ lic-name="org.apache.servicemix.bundles.spring-web",com.yaas.config.a
+ pi.xml.transaction;version="[1.0,2)",org.springframework.mail;bundle-
+ version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="
+ org.apache.servicemix.bundles.spring-context-support",org.springframe
+ work.stereotype;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]"
+ ;bundle-symbolic-name="org.apache.servicemix.bundles.spring-context",
+ org.springframework.orm.hibernate3;bundle-version="[3.2.11.RELEASE_2,
+  3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundl
+ es.spring-orm",org.springframework.ui.freemarker;bundle-version="[3.2
+ .11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.se
+ rvicemix.bundles.spring-context-support",org.springframework.core.env
+ ;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symboli
+ c-name="org.apache.servicemix.bundles.spring-core",org.springframewor
+ k.orm.hibernate4;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]
+ ";bundle-symbolic-name="org.apache.servicemix.bundles.spring-orm",com
+ .yaas.test.api.finder;version="[1.0,2)",org.springframework.jca.suppo
+ rt;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbo
+ lic-name="org.apache.servicemix.bundles.spring-tx",org.springframewor
+ k.cglib.proxy;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";b
+ undle-symbolic-name="org.apache.servicemix.bundles.spring-core",org.s
+ pringframework.beans.factory.aspectj;bundle-version="[3.2.11.RELEASE_
+ 2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bun
+ dles.spring-aspects",org.springframework.remoting.caucho;bundle-versi
+ on="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.a
+ pache.servicemix.bundles.spring-web",com.sun.faces.facelets.tag.ui;bu
+ ndle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name=
+ "org.glassfish.com.sun.faces",org.springframework.cache.support;bundl
+ e-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name
+ ="org.apache.servicemix.bundles.spring-context",org.springframework.a
+ op;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbo
+ lic-name="org.apache.servicemix.bundles.spring-aop",org.springframewo
+ rk.orm.hibernate4.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.R
+ ELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring
+ -orm",com.yaas.config.api.finder;version="[1.0,2)",org.springframewor
+ k.cglib.transform.impl;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELE
+ ASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-co
+ re",org.springframework.instrument.classloading.glassfish;bundle-vers
+ ion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.
+ apache.servicemix.bundles.spring-context",org.springframework.validat
+ ion.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bun
+ dle-symbolic-name="org.apache.servicemix.bundles.spring-context",org.
+ springframework.jmx;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE
+ _2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-conte
+ xt",org.springframework.jmx.access;bundle-version="[3.2.11.RELEASE_2,
+  3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundl
+ es.spring-context",org.springframework.oxm.xstream;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-oxm",org.springframework.jms;bundle-version
+ ="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apa
+ che.servicemix.bundles.spring-jms",org.springframework.orm.jpa.suppor
+ t;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbol
+ ic-name="org.apache.servicemix.bundles.spring-orm",org.springframewor
+ k.core;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-s
+ ymbolic-name="org.apache.servicemix.bundles.spring-core",javax.servle
+ t;version="[3.0,4)",javax.faces;bundle-version="[2.1.2.SNAPSHOT, 2.1.
+ 2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",org.s
+ pringframework.jms.core.support;bundle-version="[3.2.11.RELEASE_2, 3.
+ 2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.
+ spring-jms",org.springframework.jca.cci;bundle-version="[3.2.11.RELEA
+ SE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache.servicemix.
+ bundles.spring-tx",javax.faces.component;bundle-version="[2.1.2.SNAPS
+ HOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.fac
+ es",org.springframework.orm.ibatis.support;bundle-version="[3.2.11.RE
+ LEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicem
+ ix.bundles.spring-orm",org.springframework.jca.cci.core;bundle-versio
+ n="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.ap
+ ache.servicemix.bundles.spring-tx",javax.faces.el;bundle-version="[2.
+ 1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.co
+ m.sun.faces",org.springframework.oxm.castor;bundle-version="[3.2.11.R
+ ELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.service
+ mix.bundles.spring-oxm",org.springframework.scheduling.quartz;bundle-
+ version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="
+ org.apache.servicemix.bundles.spring-context-support",org.springframe
+ work.web.multipart;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_
+ 2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-web",o
+ rg.springframework.util.comparator;bundle-version="[3.2.11.RELEASE_2,
+  3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundl
+ es.spring-core",org.springframework.ejb.access;bundle-version="[3.2.1
+ 1.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.serv
+ icemix.bundles.spring-context",org.springframework.orm.ibatis;bundle-
+ version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="
+ org.apache.servicemix.bundles.spring-orm",com.yaas.test.api.xml.testc
+ ase;version="[1.0,2)",org.springframework.beans.support;bundle-versio
+ n="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.ap
+ ache.servicemix.bundles.spring-beans",com.yaas.dto.api.request;versio
+ n="[1.0,2)",org.springframework.aop.scope;bundle-version="[3.2.11.REL
+ EASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache.servicemi
+ x.bundles.spring-aop",com.sun.faces.application;bundle-version="[2.1.
+ 2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.
+ sun.faces",org.springframework.aop.aspectj;bundle-version="[3.2.11.RE
+ LEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache.servicem
+ ix.bundles.spring-aop",com.yaas.policy.api.transaction.finder;version
+ ="[1.0,2)",com.sun.faces.scripting.groovy;bundle-version="[2.1.2.SNAP
+ SHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.fa
+ ces",org.springframework.aop.support.annotation;bundle-version="[3.2.
+ 11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache.ser
+ vicemix.bundles.spring-aop",org.aopalliance.aop;bundle-version="[1.0.
+ 0, 1.0.0]";bundle-symbolic-name="com.springsource.org.aopalliance",or
+ g.springframework.jdbc.support;bundle-version="[3.2.11.RELEASE_2, 3.2
+ .11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.s
+ pring-jdbc",org.springframework.web.portlet;bundle-version="[3.2.11.R
+ ELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.service
+ mix.bundles.spring-webmvc-portlet",org.springframework.expression.spe
+ l.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundl
+ e-symbolic-name="org.apache.servicemix.bundles.spring-expression",org
+ .springframework.scripting.groovy;bundle-version="[3.2.11.RELEASE_2, 
+ 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundle
+ s.spring-context",org.springframework.orm;bundle-version="[3.2.11.REL
+ EASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemi
+ x.bundles.spring-orm",javax.faces.component.html;bundle-version="[2.1
+ .2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com
+ .sun.faces",org.springframework.ui.velocity;bundle-version="[3.2.11.R
+ ELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.service
+ mix.bundles.spring-context-support",org.springframework.orm.jpa.persi
+ stenceunit;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bund
+ le-symbolic-name="org.apache.servicemix.bundles.spring-orm",com.sun.f
+ aces.taglib;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-
+ symbolic-name="org.glassfish.com.sun.faces",org.springframework.core.
+ enums;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-sy
+ mbolic-name="org.apache.servicemix.bundles.spring-core",com.sun.faces
+ .context;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-sym
+ bolic-name="org.glassfish.com.sun.faces",com.sun.faces.component.vali
+ dator;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbol
+ ic-name="org.glassfish.com.sun.faces",org.springframework.scripting.b
+ sh;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbo
+ lic-name="org.apache.servicemix.bundles.spring-context",org.springfra
+ mework.scheduling.concurrent;bundle-version="[3.2.11.RELEASE_2, 3.2.1
+ 1.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-context",org.springframework.cache.concurrent;bundle-version="[3.
+ 2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.s
+ ervicemix.bundles.spring-context",com.sun.faces.application.view;bund
+ le-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="o
+ rg.glassfish.com.sun.faces",org.springframework.core.task.support;bun
+ dle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-na
+ me="org.apache.servicemix.bundles.spring-core",org.springframework.or
+ m.hibernate3.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEAS
+ E_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-orm"
+ ,org.springframework.instrument.classloading;bundle-version="[3.2.11.
+ RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servic
+ emix.bundles.spring-context",org.springframework.aop.framework.autopr
+ oxy;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-aop",org.springframew
+ ork.orm.jdo.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE
+ _2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-orm",
+ org.springframework.web.util;bundle-version="[3.2.11.RELEASE_2, 3.2.1
+ 1.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-web",org.springframework.jndi.support;bundle-version="[3.2.11.REL
+ EASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemi
+ x.bundles.spring-context",org.springframework.remoting.rmi;bundle-ver
+ sion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org
+ .apache.servicemix.bundles.spring-context",org.springframework.core.t
+ ype;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-core",com.yaas.policy
+ .api.domain.transaction;version="[1.0,2)",org.springframework.http.co
+ nverter.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]"
+ ;bundle-symbolic-name="org.apache.servicemix.bundles.spring-web",org.
+ springframework.format.number;bundle-version="[3.2.11.RELEASE_2, 3.2.
+ 11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.sp
+ ring-context",org.springframework.http.converter.xml;bundle-version="
+ [3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apach
+ e.servicemix.bundles.spring-web",org.springframework.context.weaving;
+ bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic
+ -name="org.apache.servicemix.bundles.spring-context",org.springframew
+ ork.aop.framework.adapter;bundle-version="[3.2.11.RELEASE_3, 3.2.11.R
+ ELEASE_3]";bundle-symbolic-name="org.apache.servicemix.bundles.spring
+ -aop",com.sun.faces.renderkit;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.
+ SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",org.spr
+ ingframework.jdbc.core.namedparam;bundle-version="[3.2.11.RELEASE_2, 
+ 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundle
+ s.spring-jdbc",org.springframework.jdbc.config;bundle-version="[3.2.1
+ 1.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.serv
+ icemix.bundles.spring-jdbc",javax.faces.model;bundle-version="[2.1.2.
+ SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.su
+ n.faces",org.springframework.jms.support.destination;bundle-version="
+ [3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apach
+ e.servicemix.bundles.spring-jms",org.springframework.jdbc.datasource.
+ lookup;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-s
+ ymbolic-name="org.apache.servicemix.bundles.spring-jdbc",org.springfr
+ amework.jms.support.converter;bundle-version="[3.2.11.RELEASE_2, 3.2.
+ 11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.sp
+ ring-jms",org.springframework.beans.factory.wiring;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-beans",com.sun.faces.component;bundle-versi
+ on="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glass
+ fish.com.sun.faces",org.springframework.jms.listener.endpoint;bundle-
+ version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="
+ org.apache.servicemix.bundles.spring-jms",org.springframework.jca.end
+ point;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-sy
+ mbolic-name="org.apache.servicemix.bundles.spring-tx",org.springframe
+ work.ui.context.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.REL
+ EASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-c
+ ontext",org.springframework.http.converter.json;bundle-version="[3.2.
+ 11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.ser
+ vicemix.bundles.spring-web",org.springframework.cache.annotation;bund
+ le-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-nam
+ e="org.apache.servicemix.bundles.spring-context",javax.sql,com.sun.fa
+ ces.facelets.el;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bun
+ dle-symbolic-name="org.glassfish.com.sun.faces",org.springframework.t
+ ransaction.jta;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";
+ bundle-symbolic-name="org.apache.servicemix.bundles.spring-tx",org.sp
+ ringframework.aop.aspectj.annotation;bundle-version="[3.2.11.RELEASE_
+ 3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache.servicemix.bun
+ dles.spring-aop",org.springframework.context.expression;bundle-versio
+ n="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.ap
+ ache.servicemix.bundles.spring-context",org.springframework.http.clie
+ nt;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbo
+ lic-name="org.apache.servicemix.bundles.spring-web",com.yaas.dto.api.
+ xml.request;version="[1.0,2)",org.springframework.scheduling.config;b
+ undle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-
+ name="org.apache.servicemix.bundles.spring-context",com.sun.faces.fac
+ elets.tag;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-sy
+ mbolic-name="org.glassfish.com.sun.faces",com.sun.faces.mgbean;bundle
+ -version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org
+ .glassfish.com.sun.faces",org.springframework.scheduling.commonj;bund
+ le-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-nam
+ e="org.apache.servicemix.bundles.spring-context-support",org.springfr
+ amework.http.converter;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELE
+ ASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-we
+ b",org.springframework.web.jsf.el;bundle-version="[3.2.11.RELEASE_2, 
+ 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundle
+ s.spring-web",org.aopalliance.intercept;bundle-version="[1.0.0, 1.0.0
+ ]";bundle-symbolic-name="com.springsource.org.aopalliance",org.spring
+ framework.aop.target.dynamic;bundle-version="[3.2.11.RELEASE_3, 3.2.1
+ 1.RELEASE_3]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-aop",org.springframework.cache.interceptor;bundle-version="[3.2.1
+ 1.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.serv
+ icemix.bundles.spring-context",org.springframework.jca.cci.object;bun
+ dle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-na
+ me="org.apache.servicemix.bundles.spring-tx",com.yaas.policy.api.type
+ ;version="[1.0,2)",org.springframework.jms.config;bundle-version="[3.
+ 2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.s
+ ervicemix.bundles.spring-jms",org.springframework.dao.support;bundle-
+ version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="
+ org.apache.servicemix.bundles.spring-tx",org.springframework.beans.pr
+ opertyeditors;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";b
+ undle-symbolic-name="org.apache.servicemix.bundles.spring-beans",org.
+ springframework.jmx.export;bundle-version="[3.2.11.RELEASE_2, 3.2.11.
+ RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.sprin
+ g-context",javax.faces.validator;bundle-version="[2.1.2.SNAPSHOT, 2.1
+ .2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",com.
+ sun.faces;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-sy
+ mbolic-name="org.glassfish.com.sun.faces",org.xml.sax,org.springframe
+ work.beans.factory.access.el;bundle-version="[3.2.11.RELEASE_2, 3.2.1
+ 1.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-beans",org.springframework.core.serializer.support;bundle-version
+ ="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apa
+ che.servicemix.bundles.spring-core",org.springframework.jdbc.support.
+ xml;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-jdbc",org.springframe
+ work.jdbc.support.incrementer;bundle-version="[3.2.11.RELEASE_2, 3.2.
+ 11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.sp
+ ring-jdbc",javax.faces.application;bundle-version="[2.1.2.SNAPSHOT, 2
+ .1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",or
+ g.springframework.web.accept;bundle-version="[3.2.11.RELEASE_2, 3.2.1
+ 1.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-web",org.springframework.scripting.jruby;bundle-version="[3.2.11.
+ RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servic
+ emix.bundles.spring-context",org.springframework.cache.jcache;bundle-
+ version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="
+ org.apache.servicemix.bundles.spring-context-support",org.springframe
+ work.beans.factory;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_
+ 2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-beans"
+ ,org.springframework.jmx.export.metadata;bundle-version="[3.2.11.RELE
+ ASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix
+ .bundles.spring-context",org.springframework.scripting.support;bundle
+ -version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name=
+ "org.apache.servicemix.bundles.spring-context",com.sun.faces.facelets
+ ;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-na
+ me="org.glassfish.com.sun.faces",org.springframework.util;bundle-vers
+ ion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.
+ apache.servicemix.bundles.spring-core",com.sun.faces.lifecycle;bundle
+ -version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org
+ .glassfish.com.sun.faces",org.springframework.jca.work.jboss;bundle-v
+ ersion="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="o
+ rg.apache.servicemix.bundles.spring-tx",org.springframework.core.io;b
+ undle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-
+ name="org.apache.servicemix.bundles.spring-core",com.yaas.config.api.
+ type;version="[1.0,2)",org.springframework.context;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-context",org.springframework.web.context;bu
+ ndle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-n
+ ame="org.apache.servicemix.bundles.spring-web",org.w3c.dom,org.spring
+ framework.jca.work;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_
+ 3]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-tx",or
+ g.springframework.aop.config;bundle-version="[3.2.11.RELEASE_3, 3.2.1
+ 1.RELEASE_3]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-aop",com.sun.faces.taglib.jsf_core;bundle-version="[2.1.2.SNAPSHO
+ T, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces
+ ",com.yaas.config.api.product;version="[1.0,2)",org.springframework.j
+ ms.connection;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";b
+ undle-symbolic-name="org.apache.servicemix.bundles.spring-jms",org.sp
+ ringframework.scheduling;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RE
+ LEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-
+ context",org.springframework.transaction.annotation;bundle-version="[
+ 3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache
+ .servicemix.bundles.spring-tx",org.springframework.expression.spel.ge
+ nerated;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-
+ symbolic-name="org.apache.servicemix.bundles.spring-expression",org.s
+ pringframework.aop.framework;bundle-version="[3.2.11.RELEASE_3, 3.2.1
+ 1.RELEASE_3]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-aop",org.springframework.jmx.export.naming;bundle-version="[3.2.1
+ 1.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.serv
+ icemix.bundles.spring-context",org.springframework.dao;bundle-version
+ ="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apa
+ che.servicemix.bundles.spring-tx",org.springframework.transaction.sup
+ port;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-sym
+ bolic-name="org.apache.servicemix.bundles.spring-tx",org.springframew
+ ork.aop.aspectj.autoproxy;bundle-version="[3.2.11.RELEASE_3, 3.2.11.R
+ ELEASE_3]";bundle-symbolic-name="org.apache.servicemix.bundles.spring
+ -aop",org.springframework.instrument.classloading.jboss;bundle-versio
+ n="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.ap
+ ache.servicemix.bundles.spring-context",org.springframework.context.a
+ nnotation.aspectj;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2
+ ]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-aspects
+ ",org.springframework.beans;bundle-version="[3.2.11.RELEASE_2, 3.2.11
+ .RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spri
+ ng-beans",org.springframework.web.jsf;bundle-version="[3.2.11.RELEASE
+ _2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bu
+ ndles.spring-web",org.springframework.web.portlet.handler;bundle-vers
+ ion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.
+ apache.servicemix.bundles.spring-webmvc-portlet",com.yaas.test.api.op
+ eration;version="[1.0,2)",com.sun.faces.facelets.tag.composite;bundle
+ -version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org
+ .glassfish.com.sun.faces",org.springframework.jndi;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-context",com.sun.faces.vendor;bundle-versio
+ n="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassf
+ ish.com.sun.faces",org.springframework.expression.spel;bundle-version
+ ="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apa
+ che.servicemix.bundles.spring-expression",com.sun.faces.taglib.html_b
+ asic;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symboli
+ c-name="org.glassfish.com.sun.faces",org.springframework.web.portlet.
+ mvc;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-webmvc-portlet",org.s
+ pringframework.cglib.transform;bundle-version="[3.2.11.RELEASE_2, 3.2
+ .11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.s
+ pring-core",org.springframework.expression.common;bundle-version="[3.
+ 2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.s
+ ervicemix.bundles.spring-expression",org.springframework.core.style;b
+ undle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-
+ name="org.apache.servicemix.bundles.spring-core",org.springframework.
+ web.portlet.multipart;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEA
+ SE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-web
+ mvc-portlet",org.springframework.validation;bundle-version="[3.2.11.R
+ ELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.service
+ mix.bundles.spring-context",com.sun.faces.spi;bundle-version="[2.1.2.
+ SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.su
+ n.faces",com.sun.faces.ext.component;bundle-version="[2.1.2.SNAPSHOT,
+  2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",
+ org.springframework.cglib;bundle-version="[3.2.11.RELEASE_2, 3.2.11.R
+ ELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring
+ -core",org.springframework.cglib.beans;bundle-version="[3.2.11.RELEAS
+ E_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.b
+ undles.spring-core",org.springframework.beans.annotation;bundle-versi
+ on="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.a
+ pache.servicemix.bundles.spring-beans",javax.faces.render;bundle-vers
+ ion="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glas
+ sfish.com.sun.faces",org.springframework.expression.spel.ast;bundle-v
+ ersion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="o
+ rg.apache.servicemix.bundles.spring-expression",org.springframework.c
+ ontext.i18n;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bun
+ dle-symbolic-name="org.apache.servicemix.bundles.spring-context",com.
+ yaas.config.api.xml.lifecycle;version="[1.0,2)",org.springframework.t
+ ransaction.config;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3
+ ]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-tx",org
+ .springframework.validation.beanvalidation;bundle-version="[3.2.11.RE
+ LEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicem
+ ix.bundles.spring-context",org.springframework.orm.hibernate3.annotat
+ ion;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-orm",org.springframew
+ ork.instrument.classloading.websphere;bundle-version="[3.2.11.RELEASE
+ _2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bu
+ ndles.spring-context",com.sun.faces.facelets.tag.jstl.core;bundle-ver
+ sion="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.gla
+ ssfish.com.sun.faces",com.yaas.commons.api.request;version="[1.0,2)",
+ org.springframework.beans.factory.xml;bundle-version="[3.2.11.RELEASE
+ _2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bu
+ ndles.spring-beans",org.springframework.transaction.interceptor;bundl
+ e-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name
+ ="org.apache.servicemix.bundles.spring-tx",org.springframework.beans.
+ factory.parsing;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]"
+ ;bundle-symbolic-name="org.apache.servicemix.bundles.spring-beans",or
+ g.springframework.jdbc.support.nativejdbc;bundle-version="[3.2.11.REL
+ EASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemi
+ x.bundles.spring-jdbc",org.springframework.jdbc.support.rowset;bundle
+ -version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name=
+ "org.apache.servicemix.bundles.spring-jdbc",org.springframework.orm.j
+ do;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbo
+ lic-name="org.apache.servicemix.bundles.spring-orm",javax.faces.event
+ ;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-na
+ me="org.glassfish.com.sun.faces",org.springframework.transaction.aspe
+ ctj;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-aspects",org.springfr
+ amework.oxm.jaxb;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]
+ ";bundle-symbolic-name="org.apache.servicemix.bundles.spring-oxm",org
+ .springframework.web.context.request;bundle-version="[3.2.11.RELEASE_
+ 2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bun
+ dles.spring-web",com.sun.faces.facelets.tag.jsf;bundle-version="[2.1.
+ 2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.
+ sun.faces",com.sun.faces.renderkit.html_basic;bundle-version="[2.1.2.
+ SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.su
+ n.faces",org.springframework.remoting.jaxws;bundle-version="[3.2.11.R
+ ELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.service
+ mix.bundles.spring-web",org.springframework.instrument.classloading.o
+ c4j;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-context",org.springfr
+ amework.format.datetime.joda;bundle-version="[3.2.11.RELEASE_2, 3.2.1
+ 1.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spr
+ ing-context",com.sun.faces.context.flash;bundle-version="[2.1.2.SNAPS
+ HOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.fac
+ es",com.sun.faces.resources;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SN
+ APSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",org.dom4j
+ .io;version="[1.6,2)",org.springframework.web.portlet.util;bundle-ver
+ sion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org
+ .apache.servicemix.bundles.spring-webmvc-portlet",org.springframework
+ .core.convert;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";b
+ undle-symbolic-name="org.apache.servicemix.bundles.spring-core",org.s
+ pringframework.jdbc.datasource.init;bundle-version="[3.2.11.RELEASE_2
+ , 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bund
+ les.spring-jdbc",org.springframework.web.portlet.bind.annotation;bund
+ le-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-nam
+ e="org.apache.servicemix.bundles.spring-webmvc-portlet",org.springfra
+ mework.remoting.httpinvoker;bundle-version="[3.2.11.RELEASE_2, 3.2.11
+ .RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spri
+ ng-web",org.springframework.format.datetime;bundle-version="[3.2.11.R
+ ELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.service
+ mix.bundles.spring-context",org.springframework.aop.support;bundle-ve
+ rsion="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="or
+ g.apache.servicemix.bundles.spring-aop",org.springframework.jms.liste
+ ner;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-jms",org.springframew
+ ork.beans.factory.serviceloader;bundle-version="[3.2.11.RELEASE_2, 3.
+ 2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.
+ spring-beans",org.eclipse.virgo.web.dm;version="[3.0.0,4.0.0)",com.su
+ n.faces.facelets.component;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNA
+ PSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",com.sun.fa
+ ces.io;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbo
+ lic-name="org.glassfish.com.sun.faces",org.springframework.asm.signat
+ ure;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symb
+ olic-name="org.apache.servicemix.bundles.spring-core",org.springframe
+ work.context.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEAS
+ E_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-cont
+ ext",com.yaas.config.api.xml.plan;version="[1.0,2)",org.springframewo
+ rk.cglib.util;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";b
+ undle-symbolic-name="org.apache.servicemix.bundles.spring-core",com.y
+ aas.xml.api.util;version="[1.0,2)",org.springframework.scheduling.sup
+ port;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-sym
+ bolic-name="org.apache.servicemix.bundles.spring-context",com.yaas.dt
+ o.api.xml.policy;version="[1.0,2)",org.springframework.core.convert.s
+ upport;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-s
+ ymbolic-name="org.apache.servicemix.bundles.spring-core",org.springfr
+ amework.cache;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";b
+ undle-symbolic-name="org.apache.servicemix.bundles.spring-context",or
+ g.springframework.format.support;bundle-version="[3.2.11.RELEASE_2, 3
+ .2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles
+ .spring-context",org.springframework.cache.ehcache;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-context-support",org.springframework.web.po
+ rtlet.context;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";b
+ undle-symbolic-name="org.apache.servicemix.bundles.spring-webmvc-port
+ let",com.sun.faces.facelets.tag.jsf.html;bundle-version="[2.1.2.SNAPS
+ HOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.fac
+ es",com.sun.faces.facelets.impl;bundle-version="[2.1.2.SNAPSHOT, 2.1.
+ 2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",org.s
+ pringframework.http.converter.feed;bundle-version="[3.2.11.RELEASE_2,
+  3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundl
+ es.spring-web",com.sun.faces.facelets.tag.jsf.core;bundle-version="[2
+ .1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.c
+ om.sun.faces",org.springframework.format;bundle-version="[3.2.11.RELE
+ ASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix
+ .bundles.spring-context",org.springframework.web.method.annotation;bu
+ ndle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-n
+ ame="org.apache.servicemix.bundles.spring-web",org.springframework.ht
+ tp;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbo
+ lic-name="org.apache.servicemix.bundles.spring-web",org.springframewo
+ rk.oxm.mime;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bun
+ dle-symbolic-name="org.apache.servicemix.bundles.spring-oxm",org.spri
+ ngframework.web.method;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELE
+ ASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-we
+ b",com.sun.faces.component.behavior;bundle-version="[2.1.2.SNAPSHOT, 
+ 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",o
+ rg.springframework.ui;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEA
+ SE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-con
+ text",org.springframework.jmx.export.annotation;bundle-version="[3.2.
+ 11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.ser
+ vicemix.bundles.spring-context",org.springframework.web.bind;bundle-v
+ ersion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="o
+ rg.apache.servicemix.bundles.spring-web",org.springframework.jca.cci.
+ core.support;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bu
+ ndle-symbolic-name="org.apache.servicemix.bundles.spring-tx",org.spri
+ ngframework.jms.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.REL
+ EASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-j
+ ms",org.springframework.jdbc.support.lob;bundle-version="[3.2.11.RELE
+ ASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix
+ .bundles.spring-jdbc",org.springframework.scripting.config;bundle-ver
+ sion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org
+ .apache.servicemix.bundles.spring-context",org.springframework.jms.re
+ moting;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-s
+ ymbolic-name="org.apache.servicemix.bundles.spring-jms",org.springfra
+ mework.jms.core;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]"
+ ;bundle-symbolic-name="org.apache.servicemix.bundles.spring-jms",java
+ x.faces.view;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle
+ -symbolic-name="org.glassfish.com.sun.faces",com.sun.faces.config.pro
+ cessor;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbo
+ lic-name="org.glassfish.com.sun.faces",org.springframework.scripting;
+ bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic
+ -name="org.apache.servicemix.bundles.spring-context",org.springframew
+ ork.web.context.support;bundle-version="[3.2.11.RELEASE_2, 3.2.11.REL
+ EASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-w
+ eb",com.sun.faces.ext.taglib;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.S
+ NAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",org.spri
+ ngframework.instrument.classloading.weblogic;bundle-version="[3.2.11.
+ RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servic
+ emix.bundles.spring-context",com.sun.faces.application.resource;bundl
+ e-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="or
+ g.glassfish.com.sun.faces",org.springframework.web.bind.support;bundl
+ e-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name
+ ="org.apache.servicemix.bundles.spring-web",org.springframework.aop.i
+ nterceptor;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELEASE_3]";bund
+ le-symbolic-name="org.apache.servicemix.bundles.spring-aop",org.sprin
+ gframework.context.access;bundle-version="[3.2.11.RELEASE_2, 3.2.11.R
+ ELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring
+ -context",javax.faces.context;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.
+ SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun.faces",com.sun
+ .faces.scripting;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bu
+ ndle-symbolic-name="org.glassfish.com.sun.faces",org.springframework.
+ web.bind.annotation;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE
+ _2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-web",
+ org.springframework.cache.config;bundle-version="[3.2.11.RELEASE_2, 3
+ .2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles
+ .spring-context",org.springframework.web.multipart.support;bundle-ver
+ sion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org
+ .apache.servicemix.bundles.spring-web",org.springframework.web.client
+ ;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symboli
+ c-name="org.apache.servicemix.bundles.spring-web",org.springframework
+ .jdbc.datasource;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]
+ ";bundle-symbolic-name="org.apache.servicemix.bundles.spring-jdbc",or
+ g.springframework.web.client.support;bundle-version="[3.2.11.RELEASE_
+ 2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bun
+ dles.spring-web",org.springframework.remoting.soap;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-context",com.yaas.xml.api.jaxb.finder;versi
+ on="[1.0,2)",org.springframework.transaction;bundle-version="[3.2.11.
+ RELEASE_3, 3.2.11.RELEASE_3]";bundle-symbolic-name="org.apache.servic
+ emix.bundles.spring-tx",org.springframework.web;bundle-version="[3.2.
+ 11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.ser
+ vicemix.bundles.spring-web",javax.el;bundle-version="[2.2.0.v20110801
+ 1116, 2.2.0.v201108011116]";bundle-symbolic-name="javax.el",org.sprin
+ gframework.ui.jasperreports;bundle-version="[3.2.11.RELEASE_2, 3.2.11
+ .RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spri
+ ng-context-support",org.springframework.cglib.core;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-core",org.springframework.web.multipart.com
+ mons;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-sym
+ bolic-name="org.apache.servicemix.bundles.spring-web",com.sun.faces.f
+ acelets.util;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle
+ -symbolic-name="org.glassfish.com.sun.faces",javax.faces.view.facelet
+ s;bundle-version="[2.1.2.SNAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-n
+ ame="org.glassfish.com.sun.faces",org.springframework.core.io.support
+ ;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symboli
+ c-name="org.apache.servicemix.bundles.spring-core",com.yaas.commons.a
+ pi.util;version="[1.0,2)",com.sun.faces.util;bundle-version="[2.1.2.S
+ NAPSHOT, 2.1.2.SNAPSHOT]";bundle-symbolic-name="org.glassfish.com.sun
+ .faces",org.springframework.asm.commons;bundle-version="[3.2.11.RELEA
+ SE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.
+ bundles.spring-core",org.springframework.remoting;bundle-version="[3.
+ 2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.s
+ ervicemix.bundles.spring-context",com.yaas.config.api.override;versio
+ n="[1.0,2)",org.springframework.web.method.support;bundle-version="[3
+ .2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.
+ servicemix.bundles.spring-web",com.yaas.exception.api.service;version
+ ="[1.0,2)",org.springframework.core.type.classreading;bundle-version=
+ "[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apac
+ he.servicemix.bundles.spring-core",org.springframework.jms.listener.a
+ dapter;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-s
+ ymbolic-name="org.apache.servicemix.bundles.spring-jms",org.springfra
+ mework.core.serializer;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELE
+ ASE_2]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-co
+ re",com.yaas.policy.api.policy.inquiry;version="[1.0,2)",org.springfr
+ amework.dao.annotation;bundle-version="[3.2.11.RELEASE_3, 3.2.11.RELE
+ ASE_3]";bundle-symbolic-name="org.apache.servicemix.bundles.spring-tx
+ ",org.springframework.ejb.interceptor;bundle-version="[3.2.11.RELEASE
+ _2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org.apache.servicemix.bu
+ ndles.spring-context",org.springframework.scheduling.timer;bundle-ver
+ sion="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]";bundle-symbolic-name="org
+ .apache.servicemix.bundles.spring-context",org.springframework.core.c
+ onvert.converter;bundle-version="[3.2.11.RELEASE_2, 3.2.11.RELEASE_2]
+ ";bundle-symbolic-name="org.apache.servicemix.bundles.spring-core",ja
+ vax.servlet.http;version="[3.0,4)"
+Bundle-SymbolicName: com.yaas.web.yaas-web

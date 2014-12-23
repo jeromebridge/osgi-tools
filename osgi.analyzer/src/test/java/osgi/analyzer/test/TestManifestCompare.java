@@ -25,10 +25,14 @@ public class TestManifestCompare {
          if( !isImportPackage( manifest2, importedPackage.getPackageName() ) ) {
             System.out.println( "Removed Import: " + importedPackage );
          }
-         else if( !importedPackage.equals( getImportPackage( manifest2, importedPackage.getPackageName() ) ) ) {
+      }
+      
+      for( ImportedPackage importedPackage : manifest1.getImportPackage().getImportedPackages() ) {
+         if( !importedPackage.equals( getImportPackage( manifest2, importedPackage.getPackageName() ) ) ) {
             System.out.println( "Import Diff: " + importedPackage + " | " + getImportPackage( manifest2, importedPackage.getPackageName() ) );
          }
       }
+      
       for( ImportedPackage importedPackage : manifest2.getImportPackage().getImportedPackages() ) {
          if( !isImportPackage( manifest1, importedPackage.getPackageName() ) ) {
             System.out.println( "Added Import: " + importedPackage );
@@ -42,6 +46,19 @@ public class TestManifestCompare {
          }
          importPackagesFound.add( importedPackage.getPackageName() );
       }
+
+      final String line = "===========================================================";
+      System.out.println( "" );
+      System.out.println( "" );
+      System.out.println( "Removed Import Statements" );
+      System.out.println( line );
+      for( int index = 0; index < manifest1.getImportPackage().getImportedPackages().size(); index++ ) {
+         final ImportedPackage importedPackage = manifest1.getImportPackage().getImportedPackages().get( index );
+         if( !isImportPackage( manifest2, importedPackage.getPackageName() ) ) {
+            System.out.println( importedPackage.getPackageName() + "," );
+         }
+      }
+
    }
 
    private boolean isImportPackage( BundleManifest manifest, String packageName ) {
