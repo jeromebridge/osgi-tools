@@ -1,5 +1,6 @@
 package tools.osgi.analyzer.api;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -62,8 +63,10 @@ public class OsgiAnalyzerCommandService {
          @Descriptor("Class name that got NoClassDefFoundError") String className
          ) {
       try {
-         System.out.println( "Class:" + className );
+         System.out.println( "Class: " + className );
          final List<Bundle> bundles = getOsgiAnalyzerService().getBundleForClassName( className );
+         final List<Bundle> success = new ArrayList<Bundle>();
+         final List<Bundle> failure = new ArrayList<Bundle>();
          for( Bundle sourceBundle : bundles ) {
             System.out.println( String.format( "Providing Bundle: %s(%s)", sourceBundle.getSymbolicName(), sourceBundle.getBundleId() ) );
             for( Bundle refBundle : getOsgiAnalyzerService().getDependentBundles( sourceBundle ) ) {
@@ -71,10 +74,10 @@ public class OsgiAnalyzerCommandService {
                final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
                try {
                   refBundle.loadClass( className );
-                  System.out.println( String.format( "  %s(%s) successfully loaded class with classloader: %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+                  success.add( refBundle );
                }
                catch( Exception exception ) {
-                  System.out.println( String.format( "  %s(%s) failed to load class with classloader, %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+                  failure.add( refBundle );
                   if( verbose ) {
                      exception.printStackTrace();
                   }
@@ -86,6 +89,26 @@ public class OsgiAnalyzerCommandService {
                }
             }
          }
+
+         // Print
+         final String line = "==========================================================";
+         System.out.println( "" );
+         System.out.println( "Successful" );
+         System.out.println( line );
+         for( Bundle refBundle : success ) {
+            final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
+            final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
+            System.out.println( String.format( "  %s(%s) successfully loaded class with classloader: %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+         }
+         System.out.println( "" );
+         System.out.println( "Failure" );
+         System.out.println( line );
+         for( Bundle refBundle : failure ) {
+            final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
+            final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
+            System.out.println( String.format( "  %s(%s) failed to load class with classloader, %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+         }
+         System.out.println( "" );
 
          // MBean Example
          Set<ObjectInstance> beans = getMBeanServer().queryMBeans( null, null );

@@ -1,9 +1,6 @@
 package tools.osgi.maven.integration.internal;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
@@ -12,10 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
 
-import org.apache.maven.project.MavenProject;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.osgi.framework.Bundle;
@@ -33,6 +27,15 @@ import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 public class MavenProjectsBundleDeploymentPlan {
    public static abstract class AbstractBundleDeploymentPlan {
       private List<BundleImportRequirement> importRequirements = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
+      private BundleManifest manifest;
+
+      public boolean isWebBundle() {
+         return manifest.getHeader( "Web-ContextPath" ) != null;
+      }
+
+      public AbstractBundleDeploymentPlan( BundleManifest manifest ) {
+         this.manifest = manifest;
+      }
 
       public void addBundleImportRequirement( BundleImportRequirement requirement ) {
          importRequirements.add( requirement );
@@ -40,8 +43,14 @@ public class MavenProjectsBundleDeploymentPlan {
 
       public abstract URI getBundleUri();
 
+      public abstract File getFile();
+
       public List<BundleImportRequirement> getImportRequirements() {
          return importRequirements;
+      }
+
+      public BundleManifest getManifest() {
+         return manifest;
       }
 
       public List<BundleImportRequirement> getUnresolvedImportRequirements() {
@@ -214,6 +223,7 @@ public class MavenProjectsBundleDeploymentPlan {
       private Artifact dependency;
 
       public MavenDependencyBundleDeploymentPlan( Artifact dependency ) {
+         super( MavenUtils.getBundleManifest( dependency ) );
          this.dependency = dependency;
       }
 
@@ -226,7 +236,12 @@ public class MavenProjectsBundleDeploymentPlan {
 
       @Override
       public URI getBundleUri() {
-         return dependency.getFile().toURI();
+         return getFile().toURI();
+      }
+
+      @Override
+      public File getFile() {
+         return dependency.getFile();
       }
 
       public Artifact getDependency() {
@@ -243,6 +258,7 @@ public class MavenProjectsBundleDeploymentPlan {
       private MavenProjectHolder mavenProjectHolder;
 
       public MavenProjectBundleDeploymentPlan( MavenProjectHolder holder ) {
+         super( MavenUtils.getBundleManifest( holder.getProject() ) );
          this.mavenProjectHolder = holder;
       }
 
@@ -261,6 +277,11 @@ public class MavenProjectsBundleDeploymentPlan {
          catch( Exception exception ) {
             throw new RuntimeException( String.format( "Error getting maven project bundle URI for: %s", mavenProjectHolder.getProject().getArtifactId() ), exception );
          }
+      }
+
+      @Override
+      public File getFile() {
+         return getMavenProjectBundleFolder();
       }
 
       public MavenProjectHolder getMavenProjectHolder() {
@@ -365,7 +386,7 @@ public class MavenProjectsBundleDeploymentPlan {
    private void addMavenDependencyPlans( List<Artifact> dependencies ) {
       for( Artifact dependency : dependencies ) {
          final MavenDependencyBundleDeploymentPlan plan = new MavenDependencyBundleDeploymentPlan( dependency );
-         final BundleManifest manifest = getBundleManifest( dependency );
+         final BundleManifest manifest = MavenUtils.getBundleManifest( dependency );
          if( manifest == null ) {
             throw new RuntimeException( String.format( "No manifest could be loaded for Maven Dependency: %s", dependency.getArtifactId() ) );
          }
@@ -437,7 +458,7 @@ public class MavenProjectsBundleDeploymentPlan {
    private List<Artifact> findMavenDependenciesThatSatisfyImport( List<Artifact> dependencies, ImportedPackage importedPackage ) {
       final List<Artifact> result = new ArrayList<Artifact>();
       for( Artifact dependency : dependencies ) {
-         final BundleManifest manifest = getBundleManifest( dependency );
+         final BundleManifest manifest = MavenUtils.getBundleManifest( dependency );
          if( manifest != null && containsExportForImport( manifest, importedPackage ) ) {
             result.add( dependency );
          }
@@ -458,7 +479,7 @@ public class MavenProjectsBundleDeploymentPlan {
    private List<MavenProjectHolder> findMavenProjectsThatSatisfyImport( ImportedPackage importedPackage ) {
       final List<MavenProjectHolder> result = new ArrayList<MavenProjectHolder>();
       for( MavenProjectHolder holder : mavenProjects ) {
-         final BundleManifest manifest = getBundleManifest( holder.getProject() );
+         final BundleManifest manifest = MavenUtils.getBundleManifest( holder.getProject() );
          if( manifest != null && containsExportForImport( manifest, importedPackage ) ) {
             result.add( holder );
          }
@@ -466,40 +487,8 @@ public class MavenProjectsBundleDeploymentPlan {
       return result;
    }
 
-   private BundleManifest getBundleManifest( Artifact dependency ) {
-      try {
-         BundleManifest result = null;
-         final JarFile jar = new JarFile( dependency.getFile() );
-         final ZipEntry manifestEntry = jar.getEntry( JarFile.MANIFEST_NAME );
-         if( manifestEntry != null ) {
-            final Reader reader = new InputStreamReader( jar.getInputStream( manifestEntry ) );
-            result = BundleManifestFactory.createBundleManifest( reader, new DummyParserLogger() );
-            jar.close();
-         }
-         return result;
-      }
-      catch( Exception exception ) {
-         throw new RuntimeException( String.format( "Error getting bundle manifest for dependency: %s", dependency ), exception );
-      }
-   }
-
    private BundleManifest getBundleManifest( Bundle bundle ) {
       return BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
-   }
-
-   private BundleManifest getBundleManifest( MavenProject project ) {
-      try {
-         BundleManifest result = null;
-         final File manifestFile = getManifestFile( project );
-         if( manifestFile.exists() ) {
-            final Reader reader = new FileReader( manifestFile );
-            result = BundleManifestFactory.createBundleManifest( reader, new DummyParserLogger() );
-         }
-         return result;
-      }
-      catch( Exception exception ) {
-         throw new RuntimeException( String.format( "Failed getting manifest for Maven Project: %s", project.getArtifactId() ) );
-      }
    }
 
    private ExportedPackage getExportedPackage( Bundle bundle, ImportedPackage importedPackage ) {
@@ -520,10 +509,6 @@ public class MavenProjectsBundleDeploymentPlan {
          }
       }
       return result;
-   }
-
-   private File getManifestFile( MavenProject project ) {
-      return new File( project.getBuild().getOutputDirectory() + File.separator + "META-INF/MANIFEST.MF" );
    }
 
    private List<Artifact> getMavenDependenciesFromProjectPlans() {
@@ -592,7 +577,7 @@ public class MavenProjectsBundleDeploymentPlan {
       projectPlans.clear();
       for( MavenProjectHolder holder : mavenProjects ) {
          final MavenProjectBundleDeploymentPlan plan = new MavenProjectBundleDeploymentPlan( holder );
-         final BundleManifest manifest = getBundleManifest( holder.getProject() );
+         final BundleManifest manifest = MavenUtils.getBundleManifest( holder.getProject() );
          if( manifest == null ) {
             throw new RuntimeException( String.format( "No manifest could be loaded for Maven Project: %s", holder.getProject().getArtifactId() ) );
          }
@@ -604,13 +589,13 @@ public class MavenProjectsBundleDeploymentPlan {
       printDuration( startTime, endTime, "Init Project Plans" );
    }
 
+   private boolean isCircular( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
+      return planA.isDependentOn( planB ) && planB.isDependentOn( planA );
+   }
+
    private void printDuration( Date startTime, Date endTime, String description ) {
       final long seconds = ( endTime.getTime() - startTime.getTime() ) / 1000;
       System.out.println( String.format( "%s: %s Seconds", description, seconds ) );
-   }
-
-   private boolean isCircular( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
-      return planA.isDependentOn( planB ) && planB.isDependentOn( planA );
    }
 
    private List<Artifact> resolveAllMavenDependencies() {

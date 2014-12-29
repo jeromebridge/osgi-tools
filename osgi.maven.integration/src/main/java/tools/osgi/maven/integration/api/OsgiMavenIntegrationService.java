@@ -4,6 +4,7 @@ import hudson.maven.MavenEmbedder;
 import hudson.maven.MavenRequest;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.Writer;
 import java.net.URI;
@@ -32,6 +33,8 @@ import org.eclipse.aether.resolution.ArtifactResult;
 import org.eclipse.aether.resolution.DependencyRequest;
 import org.eclipse.aether.util.artifact.JavaScopes;
 import org.eclipse.aether.util.filter.DependencyFilterUtils;
+import org.eclipse.virgo.nano.deployer.api.core.ApplicationDeployer;
+import org.eclipse.virgo.nano.deployer.api.core.DeploymentIdentity;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -64,6 +67,23 @@ public class OsgiMavenIntegrationService {
 
    public OsgiMavenIntegrationService( BundleContext bundleContext ) {
       this.bundleContext = bundleContext;
+   }
+
+   @Descriptor("Testing")
+   public void deploy() throws Exception {
+      final ApplicationDeployer deployer = getApplicationDeployer();
+      System.out.println( "Deployer Service: " + deployer );
+      // deployer.deploy( new URI( "" ) );
+
+      final File jarFile = File.createTempFile( "temp", ".jar" );
+      final FileOutputStream fos = new FileOutputStream( jarFile );
+      System.out.println( "Jar File: " + jarFile.toURI().toURL().toExternalForm() );
+
+      final JarBuilder builder = new JarBuilder();
+      builder.add( new File( "/home/developer/git/yet-another-admin-system/yaas-ws/bin/maven/classes" ) );
+      builder.build( fos );
+
+      deployer.deploy( jarFile.toURI() );
    }
 
    @Descriptor("Analyzes the state of the OSGi container")
@@ -188,7 +208,7 @@ public class OsgiMavenIntegrationService {
                         System.out.println( String.format( "Updated Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
                      }
                      else {
-                        final Bundle bundle = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
+                        final Bundle bundle = install( plan );
                         installedBundles.add( bundle );
                         System.out.println( String.format( "Installed Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
                      }
@@ -236,6 +256,69 @@ public class OsgiMavenIntegrationService {
       catch( Throwable exception ) {
          exception.printStackTrace();
       }
+   }
+
+   private Bundle install( AbstractBundleDeploymentPlan plan ) {
+      try {
+         Bundle result = null;
+         if( isVirgoEnvironment() && plan.isWebBundle() ) {
+            if( plan.getFile().isDirectory() ) {
+               final File jarFile = File.createTempFile( "temp", ".jar" );
+               final FileOutputStream fos = new FileOutputStream( jarFile );
+               System.out.println( "Create Jar File: " + jarFile.toURI().toURL().toExternalForm() );
+
+               final JarBuilder builder = new JarBuilder();
+               builder.add( plan.getFile() );
+               builder.build( fos );
+
+               final DeploymentIdentity id = getApplicationDeployer().deploy( jarFile.toURI() );
+               result = getBundleByNameOrId( id.getSymbolicName() );
+            }
+            else {
+               final DeploymentIdentity id = getApplicationDeployer().deploy( plan.getFile().toURI() );
+               result = getBundleByNameOrId( id.getSymbolicName() );
+            }
+         }
+         else {
+            result = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
+         }
+         return result;
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( "Error deploying plan: " + plan );
+      }
+   }
+
+   private Bundle getBundleByNameOrId( String bundleId ) {
+      Bundle result = null;
+      if( isLong( bundleId ) ) {
+         result = bundleContext.getBundle( Long.valueOf( bundleId ) );
+      }
+      else {
+         for( Bundle bundle : bundleContext.getBundles() ) {
+            if( bundle.getSymbolicName().equals( bundleId ) ) {
+               result = bundle;
+               break;
+            }
+         }
+      }
+      return result;
+   }
+
+   private boolean isLong( String value ) {
+      boolean result = true;
+      try {
+         Long.parseLong( value );
+      }
+      catch( Throwable exception ) {
+         result = false;
+      }
+      return result;
+   }
+
+   private boolean isVirgoEnvironment() {
+      // TODO Determine If Virgo Environment
+      return true;
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
@@ -426,6 +509,13 @@ public class OsgiMavenIntegrationService {
       packageAdminTracker.open();
       final PackageAdmin packageAdmin = ( PackageAdmin )packageAdminTracker.getService();
       return packageAdmin;
+   }
+
+   private ApplicationDeployer getApplicationDeployer() {
+      final ServiceTracker<ApplicationDeployer, Object> packageAdminTracker = new ServiceTracker<ApplicationDeployer, Object>( bundleContext, ApplicationDeployer.class.getName(), null );
+      packageAdminTracker.open();
+      final ApplicationDeployer result = ( ApplicationDeployer )packageAdminTracker.getService();
+      return result;
    }
 
    private RepositoryAdmin getRepositoryAdmin() {

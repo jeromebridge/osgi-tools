@@ -351,6 +351,13 @@
             </exclusions>
         </dependency>
 
+        <!-- Virgo API -->
+        <dependency>
+            <groupId>org.eclipse.virgo.nano</groupId>
+            <artifactId>org.eclipse.virgo.nano.deployer.api</artifactId>
+            <version>3.6.3.RELEASE</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>junit</groupId>

@@ -3,11 +3,18 @@ package tools.osgi.maven.integration.internal;
 import hudson.maven.MavenEmbedder;
 import hudson.maven.MavenRequest;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.jar.JarFile;
+import java.util.zip.ZipEntry;
 
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Dependency;
+import org.apache.maven.project.MavenProject;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -22,6 +29,10 @@ import org.eclipse.aether.util.filter.DependencyFilterUtils;
 
 import tools.osgi.maven.integration.internal.aether.Booter;
 
+import com.springsource.util.osgi.manifest.BundleManifest;
+import com.springsource.util.osgi.manifest.BundleManifestFactory;
+import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
+
 public class MavenUtils {
 
    public static RepositorySystemSession getRepositorySystemSession( ClassLoader classLoader ) {
@@ -35,6 +46,42 @@ public class MavenUtils {
       catch( Exception exception ) {
          throw new RuntimeException( "Failed creating Repository System Session", exception );
       }
+   }
+
+   public static BundleManifest getBundleManifest( Artifact dependency ) {
+      try {
+         BundleManifest result = null;
+         final JarFile jar = new JarFile( dependency.getFile() );
+         final ZipEntry manifestEntry = jar.getEntry( JarFile.MANIFEST_NAME );
+         if( manifestEntry != null ) {
+            final Reader reader = new InputStreamReader( jar.getInputStream( manifestEntry ) );
+            result = BundleManifestFactory.createBundleManifest( reader, new DummyParserLogger() );
+            jar.close();
+         }
+         return result;
+      }
+      catch( Exception exception ) {
+         throw new RuntimeException( String.format( "Error getting bundle manifest for dependency: %s", dependency ), exception );
+      }
+   }
+
+   public static BundleManifest getBundleManifest( MavenProject project ) {
+      try {
+         BundleManifest result = null;
+         final File manifestFile = getManifestFile( project );
+         if( manifestFile.exists() ) {
+            final Reader reader = new FileReader( manifestFile );
+            result = BundleManifestFactory.createBundleManifest( reader, new DummyParserLogger() );
+         }
+         return result;
+      }
+      catch( Exception exception ) {
+         throw new RuntimeException( String.format( "Failed getting manifest for Maven Project: %s", project.getArtifactId() ) );
+      }
+   }
+
+   public static File getManifestFile( MavenProject project ) {
+      return new File( project.getBuild().getOutputDirectory() + File.separator + "META-INF/MANIFEST.MF" );
    }
 
    public static List<Artifact> resolveDependencies( MavenProjectHolder holder, RepositorySystemSession sessionOverride ) {
