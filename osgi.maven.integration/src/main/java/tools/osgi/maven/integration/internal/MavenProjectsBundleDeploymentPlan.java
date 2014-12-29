@@ -623,7 +623,7 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private List<BundleImportRequirement> resolveBundleImportRequirements( BundleManifest manifest ) {
-      resolveAllMavenDependencies();
+      resolveAllMavenDependencies(); // TODO: Need to resolve dependencies excluding maven projects
       final List<BundleImportRequirement> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
       for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
          final BundleImportRequirement requirement = new BundleImportRequirement( importedPackage );

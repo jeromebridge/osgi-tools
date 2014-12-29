@@ -13,6 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springsource.util.version>2.0.5.RELEASE</springsource.util.version>
         <slf4j.version>1.6.1</slf4j.version>
+        <spring.version>3.2.11.RELEASE</spring.version>
     </properties>
 
 
@@ -105,6 +106,27 @@
             <artifactId>com.springsource.util.osgi</artifactId>
             <version>${springsource.util.version}</version>
         </dependency>
+
+        <!-- Spring -->
+        <dependency>
+            <groupId>org.apache.servicemix.bundles</groupId>
+            <artifactId>org.apache.servicemix.bundles.spring-core</artifactId>
+            <scope>provided</scope>
+            <version>${spring.version}_2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.servicemix.bundles</groupId>
+            <artifactId>org.apache.servicemix.bundles.spring-beans</artifactId>
+            <scope>provided</scope>
+            <version>${spring.version}_2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.servicemix.bundles</groupId>
+            <artifactId>org.apache.servicemix.bundles.spring-context</artifactId>
+            <scope>provided</scope>
+            <version>${spring.version}_2</version>
+        </dependency>
+
 
         <!-- Test -->
         <dependency>

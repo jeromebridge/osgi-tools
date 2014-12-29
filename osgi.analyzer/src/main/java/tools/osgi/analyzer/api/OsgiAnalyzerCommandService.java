@@ -12,9 +12,11 @@ import org.apache.felix.service.command.Descriptor;
 import org.apache.felix.service.command.Parameter;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.util.tracker.ServiceTracker;
+import org.springframework.context.ApplicationContext;
 
 public class OsgiAnalyzerCommandService {
 
@@ -22,6 +24,45 @@ public class OsgiAnalyzerCommandService {
 
    public OsgiAnalyzerCommandService( BundleContext bundleContext ) {
       this.bundleContext = bundleContext;
+   }
+
+   @Descriptor("Inspects aspects of a given bundle")
+   public void inspect(
+         @Descriptor("Print verbose messages") @Parameter(
+               names = { "-v", "--verbose" },
+               presentValue = "true",
+               absentValue = "false") boolean verbose,
+         @Descriptor("Bundle ID to diagnose issues") String bundleId
+         ) {
+      final Bundle bundle = getBundleByNameOrId( bundleId );
+      if( bundle == null ) {
+         throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
+      }
+
+      final String line = "======================================================";
+      final ApplicationContext applicationContext = getBundleApplicationContext( bundle );
+      if( applicationContext != null ) {
+         System.out.println( "" );
+         System.out.println( String.format( "%s(%s) Application Context", bundle.getSymbolicName(), bundle.getBundleId() ) );
+         System.out.println( line );
+         for( String beanName : applicationContext.getBeanDefinitionNames() ) {
+            System.out.println( beanName );
+         }
+      }
+   }
+
+   private ApplicationContext getBundleApplicationContext( Bundle bundle ) {
+      ApplicationContext result = null;
+      final ServiceTracker<ApplicationContext, Object> tracker = getApplicationContextServiceTracker();
+      if( tracker.getServiceReferences() != null ) {
+         for( ServiceReference<ApplicationContext> ref : tracker.getServiceReferences() ) {
+            if( bundle.equals( ref.getBundle() ) ) {
+               result = ( ApplicationContext )tracker.getService( ref );
+               break;
+            }
+         }
+      }
+      return result;
    }
 
    @Descriptor("Analyzes the state of the OSGi container")
@@ -172,6 +213,12 @@ public class OsgiAnalyzerCommandService {
       tracker.open();
       final IOsgiAnalyzerService result = ( IOsgiAnalyzerService )tracker.getService();
       return result;
+   }
+
+   private ServiceTracker<ApplicationContext, Object> getApplicationContextServiceTracker() {
+      final ServiceTracker<ApplicationContext, Object> tracker = new ServiceTracker<ApplicationContext, Object>( bundleContext, ApplicationContext.class.getName(), null );
+      tracker.open();
+      return tracker;
    }
 
    private void printBundlesWithMissingDependencies() {
