@@ -16,7 +16,7 @@ public class Activator implements BundleActivator {
       try {
          final Hashtable<String, Object> props = new Hashtable<String, Object>();
          props.put( "osgi.command.scope", "tools" );
-         props.put( "osgi.command.function", new String[]{ "analyze", "diagnose", "diagnose_class" } );
+         props.put( "osgi.command.function", new String[]{ "analyze", "diagnose", "diagnose_class", "inspect" } );
          context.registerService( OsgiAnalyzerCommandService.class.getName(), new OsgiAnalyzerCommandService( context ), props );
 
          analyzerService = new InternalOsgiAnalyzerService( context );
