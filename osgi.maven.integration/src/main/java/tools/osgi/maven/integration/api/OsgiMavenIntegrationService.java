@@ -4,6 +4,7 @@ import hudson.maven.MavenEmbedder;
 import hudson.maven.MavenRequest;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.Writer;
@@ -178,7 +179,7 @@ public class OsgiMavenIntegrationService {
          // Uninstall First?
          if( reinstall ) {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
-               final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+               final Bundle existing = getExisting( plan );
                if( existing != null ) {
                   existing.uninstall();
                   System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
@@ -188,7 +189,7 @@ public class OsgiMavenIntegrationService {
 
          // Stop Existing Project Bundles
          for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
-            final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+            final Bundle existing = getExisting( plan );
             if( existing != null ) {
                existing.stop();
                System.out.println( String.format( "Stopped Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
@@ -201,9 +202,9 @@ public class OsgiMavenIntegrationService {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
                if( !dependenciesOnly || plan instanceof MavenDependencyBundleDeploymentPlan ) {
                   try {
-                     final Bundle existing = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+                     final Bundle existing = getExisting( plan );
                      if( existing != null ) {
-                        existing.update();
+                        update( plan );
                         installedBundles.add( existing );
                         System.out.println( String.format( "Updated Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
                      }
@@ -258,19 +259,47 @@ public class OsgiMavenIntegrationService {
       }
    }
 
+   private Bundle update( AbstractBundleDeploymentPlan plan ) {
+      try {
+         final Bundle bundle = getExisting( plan );
+         if( bundle != null ) {
+            if( isVirgoEnvironment() && plan.isWebBundle() ) {
+               final File jarFile = plan.createJarFile();
+               bundle.update( new FileInputStream( jarFile ) );
+            }
+            else {
+               bundle.update();
+            }
+         }
+         return bundle;
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( "Error updating existing bundle for plan: " + plan, exception );
+      }
+   }
+
+   private Bundle getExisting( AbstractBundleDeploymentPlan plan ) {
+      try {
+         Bundle result = null;
+         if( isVirgoEnvironment() && plan.isWebBundle() ) {
+            result = getBundleByNameOrId( plan.getManifest().getBundleSymbolicName().getSymbolicName() );
+         }
+         else {
+            result = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+         }
+         return result;
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( "Error finding existing bundle for plan: " + plan, exception );
+      }
+   }
+
    private Bundle install( AbstractBundleDeploymentPlan plan ) {
       try {
          Bundle result = null;
          if( isVirgoEnvironment() && plan.isWebBundle() ) {
             if( plan.getFile().isDirectory() ) {
-               final File jarFile = File.createTempFile( "temp", ".jar" );
-               final FileOutputStream fos = new FileOutputStream( jarFile );
-               System.out.println( "Create Jar File: " + jarFile.toURI().toURL().toExternalForm() );
-
-               final JarBuilder builder = new JarBuilder();
-               builder.add( plan.getFile() );
-               builder.build( fos );
-
+               final File jarFile = plan.createJarFile();
                final DeploymentIdentity id = getApplicationDeployer().deploy( jarFile.toURI() );
                result = getBundleByNameOrId( id.getSymbolicName() );
             }
@@ -285,7 +314,7 @@ public class OsgiMavenIntegrationService {
          return result;
       }
       catch( Throwable exception ) {
-         throw new RuntimeException( "Error deploying plan: " + plan );
+         throw new RuntimeException( "Error deploying plan: " + plan, exception );
       }
    }
 

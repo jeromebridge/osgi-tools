@@ -35,20 +35,32 @@ public class OsgiAnalyzerCommandService {
                absentValue = "false") boolean verbose,
          @Descriptor("Bundle ID to diagnose issues") String bundleId
          ) {
-      final Bundle bundle = getBundleByNameOrId( bundleId );
-      if( bundle == null ) {
-         throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
-      }
-
-      final String line = "======================================================";
-      final ApplicationContext applicationContext = getBundleApplicationContext( bundle );
-      if( applicationContext != null ) {
-         System.out.println( "" );
-         System.out.println( String.format( "%s(%s) Application Context", bundle.getSymbolicName(), bundle.getBundleId() ) );
-         System.out.println( line );
-         for( String beanName : applicationContext.getBeanDefinitionNames() ) {
-            System.out.println( beanName );
+      try {
+         final Bundle bundle = getBundleByNameOrId( bundleId );
+         if( bundle == null ) {
+            throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
          }
+
+         final String line = "======================================================";
+         final String subline = "------------------------------------------------------";
+         System.out.println( "" );
+         System.out.println( String.format( "%s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ) );
+         System.out.println( line );
+         System.out.println( String.format( "Application Context" ) );
+         System.out.println( subline );
+         final ApplicationContext applicationContext = getBundleApplicationContext( bundle );
+         if( applicationContext != null ) {
+            for( String beanName : applicationContext.getBeanDefinitionNames() ) {
+               System.out.println( beanName );
+            }
+         }
+         else {
+            System.out.println( "[NO APPLICATION CONTEXT FOUND]" );
+         }
+      }
+      catch( Exception exception ) {
+         exception.printStackTrace();
+         throw new RuntimeException( String.format( "Error inspecting bundle: %s", bundleId ), exception );
       }
    }
 
@@ -112,6 +124,7 @@ public class OsgiAnalyzerCommandService {
             System.out.println( String.format( "Providing Bundle: %s(%s)", sourceBundle.getSymbolicName(), sourceBundle.getBundleId() ) );
             for( Bundle refBundle : getOsgiAnalyzerService().getDependentBundles( sourceBundle ) ) {
                final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
+               @SuppressWarnings("unused")
                final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
                try {
                   refBundle.loadClass( className );

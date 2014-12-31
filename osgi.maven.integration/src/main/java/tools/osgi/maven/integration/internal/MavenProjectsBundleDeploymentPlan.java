@@ -1,6 +1,7 @@
 package tools.osgi.maven.integration.internal;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
@@ -16,6 +17,8 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleWiring;
 
+import tools.osgi.maven.integration.api.JarBuilder;
+
 import com.springsource.util.osgi.manifest.BundleManifest;
 import com.springsource.util.osgi.manifest.BundleManifestFactory;
 import com.springsource.util.osgi.manifest.ExportedPackage;
@@ -28,6 +31,22 @@ public class MavenProjectsBundleDeploymentPlan {
    public static abstract class AbstractBundleDeploymentPlan {
       private List<BundleImportRequirement> importRequirements = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
       private BundleManifest manifest;
+
+      public File createJarFile() {
+         try {
+            final File jarFile = File.createTempFile( "temp", ".jar" );
+            final FileOutputStream fos = new FileOutputStream( jarFile );
+            System.out.println( "Create Jar File: " + jarFile.toURI().toURL().toExternalForm() );
+
+            final JarBuilder builder = new JarBuilder();
+            builder.add( getFile() );
+            builder.build( fos );
+            return jarFile;
+         }
+         catch( Throwable exception ) {
+            throw new RuntimeException( "Error creating jar file for plan: " + this, exception );
+         }
+      }
 
       public boolean isWebBundle() {
          return manifest.getHeader( "Web-ContextPath" ) != null;
