@@ -216,6 +216,7 @@ public class OsgiMavenIntegrationService {
                   }
                   catch( Exception exception ) {
                      System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );
+                     throw new RuntimeException( "Failed to install: " + plan, exception );
                   }
                }
             }
