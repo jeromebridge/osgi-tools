@@ -3,8 +3,6 @@ package tools.osgi.maven.integration.test;
 import java.io.File;
 import java.io.FileOutputStream;
 
-import org.junit.Test;
-
 import tools.osgi.maven.integration.api.JarBuilder;
 
 public class TestCreateJarFile {
