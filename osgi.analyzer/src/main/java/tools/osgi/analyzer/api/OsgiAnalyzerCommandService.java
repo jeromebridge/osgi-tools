@@ -27,71 +27,20 @@ public class OsgiAnalyzerCommandService {
       this.bundleContext = bundleContext;
    }
 
-   @Descriptor("Inspects aspects of a given bundle")
-   public void inspect(
-         @Descriptor("Print verbose messages") @Parameter(
-               names = { "-v", "--verbose" },
-               presentValue = "true",
-               absentValue = "false") boolean verbose,
-         @Descriptor("Bundle ID to diagnose issues") String bundleId
-         ) {
-      try {
-         final Bundle bundle = getBundleByNameOrId( bundleId );
-         if( bundle == null ) {
-            throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
-         }
-
-         final String line = "======================================================";
-         final String subline = "------------------------------------------------------";
-         System.out.println( "" );
-         System.out.println( String.format( "%s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ) );
-         System.out.println( line );
-         System.out.println( String.format( "Application Context" ) );
-         System.out.println( subline );
-         final ApplicationContext applicationContext = getBundleApplicationContext( bundle );
-         if( applicationContext != null ) {
-            for( String beanName : applicationContext.getBeanDefinitionNames() ) {
-               System.out.println( beanName );
-            }
-         }
-         else {
-            System.out.println( "[NO APPLICATION CONTEXT FOUND]" );
-         }
-      }
-      catch( Exception exception ) {
-         exception.printStackTrace();
-         throw new RuntimeException( String.format( "Error inspecting bundle: %s", bundleId ), exception );
-      }
-   }
-
-   private ApplicationContext getBundleApplicationContext( Bundle bundle ) {
-      ApplicationContext result = null;
-      final ServiceTracker<ApplicationContext, Object> tracker = getApplicationContextServiceTracker();
-      if( tracker.getServiceReferences() != null ) {
-         for( ServiceReference<ApplicationContext> ref : tracker.getServiceReferences() ) {
-            if( bundle.equals( ref.getBundle() ) ) {
-               result = ( ApplicationContext )tracker.getService( ref );
-               break;
-            }
-         }
-      }
-      return result;
-   }
-
    @Descriptor("Analyzes the state of the OSGi container")
    public void analyze(
          @Descriptor("Find all bundles with missing dependencies") @Parameter(
                names = { "-m", "--missing-dependencies" },
                presentValue = "true",
                absentValue = "false") boolean includeMissingDependencies,
-         @Descriptor("Find all bundles with use conflicts") @Parameter(
-               names = { "-u", "--use-conflicts" },
-               presentValue = "true",
-               absentValue = "false") boolean includeUseConflicts,
-         @Descriptor("Find all issues with bundles") @Parameter(
-               names = { "-a", "--all" },
-               presentValue = "true",
-               absentValue = "false") boolean includeAll
+               @Descriptor("Find all bundles with use conflicts") @Parameter(
+                     names = { "-u", "--use-conflicts" },
+                     presentValue = "true",
+                     absentValue = "false") boolean includeUseConflicts,
+                     @Descriptor("Find all issues with bundles") @Parameter(
+                           names = { "-a", "--all" },
+                           presentValue = "true",
+                           absentValue = "false") boolean includeAll
          ) {
       try {
          if( includeMissingDependencies || includeAll ) {
@@ -107,13 +56,39 @@ public class OsgiAnalyzerCommandService {
       }
    }
 
+   @Descriptor("Diagnoses issues with a specified bundle")
+   public void diagnose(
+         @Descriptor("Print verbose messages") @Parameter(
+               names = { "-v", "--verbose" },
+               presentValue = "true",
+               absentValue = "false") boolean verbose,
+               @Descriptor("Bundle ID to diagnose issues") String bundleId
+         ) {
+      try {
+         // Get Bundle
+         final Bundle bundle = getBundleByNameOrId( bundleId );
+         if( bundle == null ) {
+            throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
+         }
+
+         // Print
+         System.out.println( "Bundle: " + bundle );
+         printUnresolvedImports( bundle, verbose );
+         printUseConflicts( bundle, verbose );
+      }
+      catch( Throwable exception ) {
+         exception.printStackTrace();
+         throw new RuntimeException( String.format( "Error diagnosing bundle: %s", bundleId ), exception );
+      }
+   }
+
    @Descriptor("Diagnoses potential issues with class")
    public void diagnose_class(
          @Descriptor("Verbose output of diagnosis") @Parameter(
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-         @Descriptor("Class name that got NoClassDefFoundError") String className
+               @Descriptor("Class name that got NoClassDefFoundError") String className
          ) {
       try {
          System.out.println( "Class: " + className );
@@ -184,37 +159,61 @@ public class OsgiAnalyzerCommandService {
       }
    }
 
-   private MBeanServer getMBeanServer() {
-      final ServiceTracker<MBeanServer, Object> packageAdminTracker = new ServiceTracker<MBeanServer, Object>( bundleContext, MBeanServer.class.getName(), null );
-      packageAdminTracker.open();
-      final MBeanServer result = ( MBeanServer )packageAdminTracker.getService();
-      return result;
-   }
-
-   @Descriptor("Diagnoses issues with a specified bundle")
-   public void diagnose(
+   @Descriptor("Inspects aspects of a given bundle")
+   public void inspect(
          @Descriptor("Print verbose messages") @Parameter(
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-         @Descriptor("Bundle ID to diagnose issues") String bundleId
+               @Descriptor("Bundle ID to diagnose issues") String bundleId
          ) {
       try {
-         // Get Bundle
          final Bundle bundle = getBundleByNameOrId( bundleId );
          if( bundle == null ) {
             throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
          }
 
-         // Print
-         System.out.println( "Bundle: " + bundle );
-         printUnresolvedImports( bundle, verbose );
-         printUseConflicts( bundle, verbose );
+         final String line = "======================================================";
+         final String subline = "------------------------------------------------------";
+         System.out.println( "" );
+         System.out.println( String.format( "%s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ) );
+         System.out.println( line );
+         System.out.println( String.format( "Application Context" ) );
+         System.out.println( subline );
+         final ApplicationContext applicationContext = getBundleApplicationContext( bundle );
+         if( applicationContext != null ) {
+            for( String beanName : applicationContext.getBeanDefinitionNames() ) {
+               System.out.println( beanName );
+            }
+         }
+         else {
+            System.out.println( "[NO APPLICATION CONTEXT FOUND]" );
+         }
       }
-      catch( Throwable exception ) {
+      catch( Exception exception ) {
          exception.printStackTrace();
-         throw new RuntimeException( String.format( "Error diagnosing bundle: %s", bundleId ), exception );
+         throw new RuntimeException( String.format( "Error inspecting bundle: %s", bundleId ), exception );
       }
+   }
+
+   private ServiceTracker<ApplicationContext, Object> getApplicationContextServiceTracker() {
+      final ServiceTracker<ApplicationContext, Object> tracker = new ServiceTracker<ApplicationContext, Object>( bundleContext, ApplicationContext.class.getName(), null );
+      tracker.open();
+      return tracker;
+   }
+
+   private ApplicationContext getBundleApplicationContext( Bundle bundle ) {
+      ApplicationContext result = null;
+      final ServiceTracker<ApplicationContext, Object> tracker = getApplicationContextServiceTracker();
+      if( tracker.getServiceReferences() != null ) {
+         for( ServiceReference<ApplicationContext> ref : tracker.getServiceReferences() ) {
+            if( bundle.equals( ref.getBundle() ) ) {
+               result = ( ApplicationContext )tracker.getService( ref );
+               break;
+            }
+         }
+      }
+      return result;
    }
 
    private Bundle getBundleByNameOrId( String bundleId ) {
@@ -233,14 +232,10 @@ public class OsgiAnalyzerCommandService {
       return result;
    }
 
-   private boolean isLong( String value ) {
-      boolean result = true;
-      try {
-         Long.parseLong( value );
-      }
-      catch( Throwable exception ) {
-         result = false;
-      }
+   private MBeanServer getMBeanServer() {
+      final ServiceTracker<MBeanServer, Object> packageAdminTracker = new ServiceTracker<MBeanServer, Object>( bundleContext, MBeanServer.class.getName(), null );
+      packageAdminTracker.open();
+      final MBeanServer result = ( MBeanServer )packageAdminTracker.getService();
       return result;
    }
 
@@ -251,10 +246,15 @@ public class OsgiAnalyzerCommandService {
       return result;
    }
 
-   private ServiceTracker<ApplicationContext, Object> getApplicationContextServiceTracker() {
-      final ServiceTracker<ApplicationContext, Object> tracker = new ServiceTracker<ApplicationContext, Object>( bundleContext, ApplicationContext.class.getName(), null );
-      tracker.open();
-      return tracker;
+   private boolean isLong( String value ) {
+      boolean result = true;
+      try {
+         Long.parseLong( value );
+      }
+      catch( Throwable exception ) {
+         result = false;
+      }
+      return result;
    }
 
    private void printBundlesWithMissingDependencies() {

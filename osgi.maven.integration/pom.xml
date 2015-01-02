@@ -356,6 +356,24 @@
             <groupId>org.eclipse.virgo.nano</groupId>
             <artifactId>org.eclipse.virgo.nano.deployer.api</artifactId>
             <version>3.6.3.RELEASE</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>org.eclipse.osgi</artifactId>
+                    <groupId>org.eclipse.virgo.mirrored</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>org.eclipse.virgo.nano.core</artifactId>
+                    <groupId>org.eclipse.virgo.nano</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>org.eclipse.virgo.util.io</artifactId>
+                    <groupId>org.eclipse.virgo.util</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>org.eclipse.virgo.medic</artifactId>
+                    <groupId>org.eclipse.virgo.medic</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Test -->
