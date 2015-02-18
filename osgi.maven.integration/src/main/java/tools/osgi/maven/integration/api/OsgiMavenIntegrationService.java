@@ -5,7 +5,6 @@ import hudson.maven.MavenRequest;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.Writer;
 import java.net.URI;
@@ -70,24 +69,25 @@ public class OsgiMavenIntegrationService {
       this.bundleContext = bundleContext;
    }
 
-   @Descriptor("Testing")
-   public void deploy() throws Exception {
-      final ApplicationDeployer deployer = getApplicationDeployer();
-      System.out.println( "Deployer Service: " + deployer );
-      // deployer.deploy( new URI( "" ) );
+   //   @Descriptor("Test Code")
+   //   public void deploy() throws Exception {
+   //      
+   //      final ApplicationDeployer deployer = getApplicationDeployer();
+   //      System.out.println( "Deployer Service: " + deployer );
+   //      // deployer.deploy( new URI( "" ) );
+   //
+   //      final File jarFile = File.createTempFile( "temp", ".jar" );
+   //      final FileOutputStream fos = new FileOutputStream( jarFile );
+   //      System.out.println( "Jar File: " + jarFile.toURI().toURL().toExternalForm() );
+   //
+   //      final JarBuilder builder = new JarBuilder();
+   //      builder.add( new File( "/home/developer/git/yet-another-admin-system/yaas-ws/bin/maven/classes" ) );
+   //      builder.build( fos );
+   //
+   //      deployer.deploy( jarFile.toURI() );
+   //   }
 
-      final File jarFile = File.createTempFile( "temp", ".jar" );
-      final FileOutputStream fos = new FileOutputStream( jarFile );
-      System.out.println( "Jar File: " + jarFile.toURI().toURL().toExternalForm() );
-
-      final JarBuilder builder = new JarBuilder();
-      builder.add( new File( "/home/developer/git/yet-another-admin-system/yaas-ws/bin/maven/classes" ) );
-      builder.build( fos );
-
-      deployer.deploy( jarFile.toURI() );
-   }
-
-   @Descriptor("Analyzes the state of the OSGi container")
+   @Descriptor("Deploys all the subfolders of the specified directory if they are compiled Maven projects that are also bundles.")
    public void deploy(
          @Descriptor("Print verbose messages") @Parameter(
                names = { "-v", "--verbose" },
@@ -118,7 +118,7 @@ public class OsgiMavenIntegrationService {
       deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, showOptionalImports, workspacePath, null );
    }
 
-   @Descriptor("Analyzes the state of the OSGi container")
+   @Descriptor("Deploys all the subfolders of the specified directory if they are compiled Maven projects that are also bundles.")
    public void deploy(
          @Descriptor("Print verbose messages") @Parameter(
                names = { "-v", "--verbose" },
