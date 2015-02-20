@@ -14,7 +14,7 @@ import org.junit.Test;
 
 public class TestLoadEclipseLocationFile {
 
-   @Test
+   //   @Test
    public void testPrintProjectLocations() throws Exception {
       // Fixture
       final String workspacePath = "/home/developer/Workspaces/Workspace - Yaas3";
