@@ -31,6 +31,17 @@ public class MavenProjectsBundleDeploymentPlan {
    public static abstract class AbstractBundleDeploymentPlan {
       private List<BundleImportRequirement> importRequirements = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
       private BundleManifest manifest;
+      private List<AbstractBundleValidationError> validationErrors = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleValidationError>();
+      private List<IBundleDeploymentPlanValidator> validators = new ArrayList<MavenProjectsBundleDeploymentPlan.IBundleDeploymentPlanValidator>();
+
+      public AbstractBundleDeploymentPlan( BundleManifest manifest ) {
+         this.manifest = manifest;
+         validators.add( new DuplicateImportsDeploymentPlanValidator() );
+      }
+
+      public void addBundleImportRequirement( BundleImportRequirement requirement ) {
+         importRequirements.add( requirement );
+      }
 
       public File createJarFile() {
          try {
@@ -46,18 +57,6 @@ public class MavenProjectsBundleDeploymentPlan {
          catch( Throwable exception ) {
             throw new RuntimeException( "Error creating jar file for plan: " + this, exception );
          }
-      }
-
-      public boolean isWebBundle() {
-         return manifest.getHeader( "Web-ContextPath" ) != null;
-      }
-
-      public AbstractBundleDeploymentPlan( BundleManifest manifest ) {
-         this.manifest = manifest;
-      }
-
-      public void addBundleImportRequirement( BundleImportRequirement requirement ) {
-         importRequirements.add( requirement );
       }
 
       public abstract URI getBundleUri();
@@ -88,6 +87,10 @@ public class MavenProjectsBundleDeploymentPlan {
          return result;
       }
 
+      public List<AbstractBundleValidationError> getValidationErrors() {
+         return validationErrors;
+      }
+
       public boolean isDependentOn( AbstractBundleDeploymentPlan planB ) {
          boolean result = false;
          for( BundleImportRequirement requirement : getImportRequirements() ) {
@@ -107,8 +110,53 @@ public class MavenProjectsBundleDeploymentPlan {
          return getUnresolvedImportRequirements( resolution ).isEmpty();
       }
 
+      public boolean isValidationError() {
+         return !validationErrors.isEmpty();
+      }
+
+      public boolean isWebBundle() {
+         return manifest.getHeader( "Web-ContextPath" ) != null;
+      }
+
       public void setImportRequirements( List<BundleImportRequirement> importRequirements ) {
          this.importRequirements = importRequirements;
+      }
+
+      public void validate() {
+         validationErrors.clear();
+         for( IBundleDeploymentPlanValidator validator : validators ) {
+            final List<AbstractBundleValidationError> errors = validator.validate( this );
+            if( errors != null ) {
+               validationErrors.addAll( errors );
+            }
+         }
+      }
+
+      protected void addValidationError( AbstractBundleValidationError error ) {
+         validationErrors.add( error );
+      }
+
+      protected void addValidator( IBundleDeploymentPlanValidator validator ) {
+         validators.add( validator );
+      }
+   }
+
+   public static abstract class AbstractBundleValidationError {
+      private BundleValidationType type = BundleValidationType.Null;
+
+      public AbstractBundleValidationError( BundleValidationType type ) {
+         this.type = type;
+      }
+
+      public BundleValidationType getType() {
+         return type;
+      }
+
+      public abstract String getValidationMessage();
+
+      @Override
+      public String toString() {
+         return getValidationMessage();
       }
    }
 
@@ -238,6 +286,52 @@ public class MavenProjectsBundleDeploymentPlan {
       None,
    }
 
+   public static enum BundleValidationType {
+      /** Duplicate imports were found in the bundle manifest */
+      DuplicateImports,
+      /** Unknown or Not Applicable */
+      Null, ;
+   }
+
+   /** Validates the manifest of the bundle does not have duplicate imports */
+   public static class DuplicateImportsDeploymentPlanValidator implements IBundleDeploymentPlanValidator {
+      @Override
+      public List<AbstractBundleValidationError> validate( AbstractBundleDeploymentPlan plan ) {
+         final List<AbstractBundleValidationError> result = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleValidationError>();
+         final List<String> importPackagesFound = new ArrayList<String>();
+         for( ImportedPackage importedPackage : plan.getManifest().getImportPackage().getImportedPackages() ) {
+            if( importPackagesFound.contains( importedPackage.getPackageName() ) ) {
+               result.add( new DuplicateImportsValidationError( importedPackage ) );
+            }
+            importPackagesFound.add( importedPackage.getPackageName() );
+         }
+         return result;
+      }
+   }
+
+   public static class DuplicateImportsValidationError extends AbstractBundleValidationError {
+      private ImportedPackage importedPackage;
+
+      public DuplicateImportsValidationError( ImportedPackage importedPackage ) {
+         super( BundleValidationType.DuplicateImports );
+         this.importedPackage = importedPackage;
+      }
+
+      public ImportedPackage getImportedPackage() {
+         return importedPackage;
+      }
+
+      @Override
+      public String getValidationMessage() {
+         return String.format( "Duplicate Import Found: %s", importedPackage.getPackageName() );
+      }
+   }
+
+   /** Interface used to perform validations on the deployment plan */
+   public static interface IBundleDeploymentPlanValidator {
+      public List<AbstractBundleValidationError> validate( AbstractBundleDeploymentPlan plan );
+   }
+
    public static class MavenDependencyBundleDeploymentPlan extends AbstractBundleDeploymentPlan {
       private Artifact dependency;
 
@@ -258,13 +352,13 @@ public class MavenProjectsBundleDeploymentPlan {
          return getFile().toURI();
       }
 
+      public Artifact getDependency() {
+         return dependency;
+      }
+
       @Override
       public File getFile() {
          return dependency.getFile();
-      }
-
-      public Artifact getDependency() {
-         return dependency;
       }
 
       @Override
@@ -318,13 +412,9 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private BundleContext bundleContext;
-
    private List<MavenDependencyBundleDeploymentPlan> dependencyPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan>();
-
    private List<AbstractBundleDeploymentPlan> installOrder = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
-
    private List<MavenProjectHolder> mavenProjects = new ArrayList<MavenProjectHolder>();
-
    private List<MavenProjectBundleDeploymentPlan> projectPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan>();
    private Map<MavenProjectHolder, List<Artifact>> resolvedMavenDependencies = new HashMap<MavenProjectHolder, List<Artifact>>();
 
@@ -363,6 +453,16 @@ public class MavenProjectsBundleDeploymentPlan {
       return mavenProjects;
    }
 
+   public List<AbstractBundleDeploymentPlan> getPlansWithValidationErrors() {
+      final List<AbstractBundleDeploymentPlan> result = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
+      for( AbstractBundleDeploymentPlan plan : installOrder ) {
+         if( plan.isValidationError() ) {
+            result.add( plan );
+         }
+      }
+      return result;
+   }
+
    public List<MavenProjectBundleDeploymentPlan> getProjectPlans() {
       return projectPlans;
    }
@@ -387,6 +487,10 @@ public class MavenProjectsBundleDeploymentPlan {
 
    public boolean isResolved( Resolution resolution ) {
       return getUnresolvedPlans( resolution ).isEmpty();
+   }
+
+   public boolean isValidationErrors() {
+      return !getPlansWithValidationErrors().isEmpty();
    }
 
    public void setProjectPlans( List<MavenProjectBundleDeploymentPlan> projectPlans ) {
@@ -571,6 +675,7 @@ public class MavenProjectsBundleDeploymentPlan {
       initProjectPlans();
       initDependencyPlans();
       initInstallOrder();
+      validatePlans();
    }
 
    private void initDependencyPlans() {
@@ -696,5 +801,11 @@ public class MavenProjectsBundleDeploymentPlan {
       }
       current.clear();
       current.addAll( ordered );
+   }
+
+   private void validatePlans() {
+      for( AbstractBundleDeploymentPlan plan : getInstallOrder() ) {
+         plan.validate();
+      }
    }
 }

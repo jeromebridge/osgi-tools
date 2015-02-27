@@ -50,6 +50,7 @@ import tools.osgi.analyzer.api.UseConflict;
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleValidationError;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleImportRequirement;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
@@ -69,9 +70,12 @@ public class OsgiMavenIntegrationService {
       this.bundleContext = bundleContext;
    }
 
+   // install -start assembly:/home/developer/git/osgi-tools/osgi.analyzer/bin/maven/classes
+   // install -start assembly:/home/developer/git/osgi-tools/osgi.maven.integration/bin/maven/classes
+
    //   @Descriptor("Test Code")
    //   public void deploy() throws Exception {
-   //      
+   //
    //      final ApplicationDeployer deployer = getApplicationDeployer();
    //      System.out.println( "Deployer Service: " + deployer );
    //      // deployer.deploy( new URI( "" ) );
@@ -176,6 +180,11 @@ public class OsgiMavenIntegrationService {
             return;
          }
 
+         // Stop If Validation Errors
+         if( deploymentPlan.isValidationErrors() ) {
+            return;
+         }
+
          // Uninstall First?
          if( reinstall ) {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
@@ -258,97 +267,6 @@ public class OsgiMavenIntegrationService {
       catch( Throwable exception ) {
          exception.printStackTrace();
       }
-   }
-
-   private Bundle update( AbstractBundleDeploymentPlan plan ) {
-      try {
-         final Bundle bundle = getExisting( plan );
-         if( bundle != null ) {
-            if( isVirgoEnvironment() && plan.isWebBundle() ) {
-               final File jarFile = plan.createJarFile();
-               bundle.update( new FileInputStream( jarFile ) );
-            }
-            else {
-               bundle.update();
-            }
-         }
-         return bundle;
-      }
-      catch( Throwable exception ) {
-         throw new RuntimeException( "Error updating existing bundle for plan: " + plan, exception );
-      }
-   }
-
-   private Bundle getExisting( AbstractBundleDeploymentPlan plan ) {
-      try {
-         Bundle result = null;
-         if( isVirgoEnvironment() && plan.isWebBundle() ) {
-            result = getBundleByNameOrId( plan.getManifest().getBundleSymbolicName().getSymbolicName() );
-         }
-         else {
-            result = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
-         }
-         return result;
-      }
-      catch( Throwable exception ) {
-         throw new RuntimeException( "Error finding existing bundle for plan: " + plan, exception );
-      }
-   }
-
-   private Bundle install( AbstractBundleDeploymentPlan plan ) {
-      try {
-         Bundle result = null;
-         if( isVirgoEnvironment() && plan.isWebBundle() ) {
-            if( plan.getFile().isDirectory() ) {
-               final File jarFile = plan.createJarFile();
-               final DeploymentIdentity id = getApplicationDeployer().deploy( jarFile.toURI() );
-               result = getBundleByNameOrId( id.getSymbolicName() );
-            }
-            else {
-               final DeploymentIdentity id = getApplicationDeployer().deploy( plan.getFile().toURI() );
-               result = getBundleByNameOrId( id.getSymbolicName() );
-            }
-         }
-         else {
-            result = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
-         }
-         return result;
-      }
-      catch( Throwable exception ) {
-         throw new RuntimeException( "Error deploying plan: " + plan, exception );
-      }
-   }
-
-   private Bundle getBundleByNameOrId( String bundleId ) {
-      Bundle result = null;
-      if( isLong( bundleId ) ) {
-         result = bundleContext.getBundle( Long.valueOf( bundleId ) );
-      }
-      else {
-         for( Bundle bundle : bundleContext.getBundles() ) {
-            if( bundle.getSymbolicName().equals( bundleId ) ) {
-               result = bundle;
-               break;
-            }
-         }
-      }
-      return result;
-   }
-
-   private boolean isLong( String value ) {
-      boolean result = true;
-      try {
-         Long.parseLong( value );
-      }
-      catch( Throwable exception ) {
-         result = false;
-      }
-      return result;
-   }
-
-   private boolean isVirgoEnvironment() {
-      // TODO Determine If Virgo Environment
-      return true;
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
@@ -461,6 +379,45 @@ public class OsgiMavenIntegrationService {
       return result;
    }
 
+   private ApplicationDeployer getApplicationDeployer() {
+      final ServiceTracker<ApplicationDeployer, Object> packageAdminTracker = new ServiceTracker<ApplicationDeployer, Object>( bundleContext, ApplicationDeployer.class.getName(), null );
+      packageAdminTracker.open();
+      final ApplicationDeployer result = ( ApplicationDeployer )packageAdminTracker.getService();
+      return result;
+   }
+
+   private Bundle getBundleByNameOrId( String bundleId ) {
+      Bundle result = null;
+      if( isLong( bundleId ) ) {
+         result = bundleContext.getBundle( Long.valueOf( bundleId ) );
+      }
+      else {
+         for( Bundle bundle : bundleContext.getBundles() ) {
+            if( bundle.getSymbolicName().equals( bundleId ) ) {
+               result = bundle;
+               break;
+            }
+         }
+      }
+      return result;
+   }
+
+   private Bundle getExisting( AbstractBundleDeploymentPlan plan ) {
+      try {
+         Bundle result = null;
+         if( isVirgoEnvironment() && plan.isWebBundle() ) {
+            result = getBundleByNameOrId( plan.getManifest().getBundleSymbolicName().getSymbolicName() );
+         }
+         else {
+            result = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
+         }
+         return result;
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( "Error finding existing bundle for plan: " + plan, exception );
+      }
+   }
+
    private File getMavenProjectBundleFolder( MavenProject project ) {
       return new File( project.getBuild().getOutputDirectory() );
    }
@@ -541,15 +498,43 @@ public class OsgiMavenIntegrationService {
       return packageAdmin;
    }
 
-   private ApplicationDeployer getApplicationDeployer() {
-      final ServiceTracker<ApplicationDeployer, Object> packageAdminTracker = new ServiceTracker<ApplicationDeployer, Object>( bundleContext, ApplicationDeployer.class.getName(), null );
-      packageAdminTracker.open();
-      final ApplicationDeployer result = ( ApplicationDeployer )packageAdminTracker.getService();
-      return result;
-   }
-
    private RepositoryAdmin getRepositoryAdmin() {
       return getOsgiService( bundleContext, RepositoryAdmin.class );
+   }
+
+   private Bundle install( AbstractBundleDeploymentPlan plan ) {
+      try {
+         Bundle result = null;
+         if( isVirgoEnvironment() && plan.isWebBundle() ) {
+            if( plan.getFile().isDirectory() ) {
+               final File jarFile = plan.createJarFile();
+               final DeploymentIdentity id = getApplicationDeployer().deploy( jarFile.toURI() );
+               result = getBundleByNameOrId( id.getSymbolicName() );
+            }
+            else {
+               final DeploymentIdentity id = getApplicationDeployer().deploy( plan.getFile().toURI() );
+               result = getBundleByNameOrId( id.getSymbolicName() );
+            }
+         }
+         else {
+            result = bundleContext.installBundle( plan.getBundleUri().toURL().toExternalForm() );
+         }
+         return result;
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( "Error deploying plan: " + plan, exception );
+      }
+   }
+
+   private boolean isLong( String value ) {
+      boolean result = true;
+      try {
+         Long.parseLong( value );
+      }
+      catch( Throwable exception ) {
+         result = false;
+      }
+      return result;
    }
 
    private boolean isMavenProject( File folder ) {
@@ -566,6 +551,11 @@ public class OsgiMavenIntegrationService {
 
    private boolean isUseConflict( Bundle bundle ) {
       return !getOsgiAnalyzerService().findUseConflicts( bundle ).isEmpty();
+   }
+
+   private boolean isVirgoEnvironment() {
+      // TODO Determine If Virgo Environment
+      return true;
    }
 
    private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
@@ -587,6 +577,8 @@ public class OsgiMavenIntegrationService {
       if( showOptionalImports ) {
          printUnresolved( deploymentPlan, verbose, Resolution.OPTIONAL );
       }
+      System.out.println( "" );
+      printValidationErrors( deploymentPlan, verbose );
    }
 
    @SuppressWarnings("unused")
@@ -627,6 +619,24 @@ public class OsgiMavenIntegrationService {
       }
    }
 
+   private void printValidationErrors( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
+      if( deploymentPlan.isValidationErrors() ) {
+         System.out.println( "Validation Errors" );
+         System.out.println( "===============================================" );
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getPlansWithValidationErrors() ) {
+            System.out.println( plan );
+            for( AbstractBundleValidationError error : plan.getValidationErrors() ) {
+               System.out.println( "   " + error );
+            }
+            if( !( plan instanceof MavenProjectBundleDeploymentPlan ) ) {
+               for( MavenProjectBundleDeploymentPlan dependent : deploymentPlan.getDependentMavenProjectBundleDeploymentPlans( plan ) ) {
+                  System.out.println( "   Maven Project Reference: " + dependent );
+               }
+            }
+         }
+      }
+   }
+
    private void refreshBundleWithUseConflicts( Bundle bundle ) {
       final Set<Bundle> bundles = new HashSet<Bundle>();
       bundles.add( bundle );
@@ -636,6 +646,25 @@ public class OsgiMavenIntegrationService {
       final Bundle[] refreshBundles = new Bundle[bundles.size()];
       bundles.toArray( refreshBundles );
       getPackageAdmin().refreshPackages( refreshBundles );
+   }
+
+   private Bundle update( AbstractBundleDeploymentPlan plan ) {
+      try {
+         final Bundle bundle = getExisting( plan );
+         if( bundle != null ) {
+            if( isVirgoEnvironment() && plan.isWebBundle() ) {
+               final File jarFile = plan.createJarFile();
+               bundle.update( new FileInputStream( jarFile ) );
+            }
+            else {
+               bundle.update();
+            }
+         }
+         return bundle;
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( "Error updating existing bundle for plan: " + plan, exception );
+      }
    }
 
 }
