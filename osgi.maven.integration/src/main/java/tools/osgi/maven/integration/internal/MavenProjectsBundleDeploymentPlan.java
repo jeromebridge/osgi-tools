@@ -771,9 +771,17 @@ public class MavenProjectsBundleDeploymentPlan {
 
    private List<Artifact> resolveMavenDependencies( MavenProjectHolder holder, RepositorySystemSession session ) {
       if( !resolvedMavenDependencies.containsKey( holder ) ) {
-         resolvedMavenDependencies.put( holder, MavenUtils.resolveDependencies( holder, session ) );
+         resolvedMavenDependencies.put( holder, MavenUtils.resolveDependencies( holder, session, getMavenProjectArtifacts() ) );
       }
       return resolvedMavenDependencies.get( holder );
+   }
+
+   private List<Artifact> getMavenProjectArtifacts() {
+      final List<Artifact> result = new ArrayList<Artifact>();
+      for( MavenProjectHolder holder : getMavenProjects() ) {
+         result.add( MavenUtils.getAetherArtifact( holder.getProject().getArtifact() ) );
+      }
+      return result;
    }
 
    private void sortInstallOrder( List<AbstractBundleDeploymentPlan> current ) {

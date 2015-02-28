@@ -18,6 +18,7 @@ import org.apache.maven.project.MavenProject;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
+import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.graph.DependencyFilter;
 import org.eclipse.aether.repository.LocalRepository;
@@ -29,6 +30,7 @@ import org.eclipse.aether.util.filter.DependencyFilterUtils;
 
 import tools.osgi.maven.integration.internal.aether.Booter;
 
+import com.springsource.util.common.CaseInsensitiveMap;
 import com.springsource.util.osgi.manifest.BundleManifest;
 import com.springsource.util.osgi.manifest.BundleManifestFactory;
 import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
@@ -85,33 +87,58 @@ public class MavenUtils {
    }
 
    public static List<Artifact> resolveDependencies( MavenProjectHolder holder, RepositorySystemSession sessionOverride ) {
+      return resolveDependencies( holder, sessionOverride, new ArrayList<Artifact>() );
+   }
+
+   public static List<Artifact> resolveDependencies( MavenProjectHolder holder, RepositorySystemSession sessionOverride, List<Artifact> exclude ) {
       final List<Artifact> result = new ArrayList<Artifact>();
       final RepositorySystem system = Booter.newRepositorySystem();
       final RepositorySystemSession session = sessionOverride != null ? sessionOverride : Booter.newRepositorySystemSession( system, new LocalRepository( holder.getEmbedder().getLocalRepositoryPath() ) );
       for( Dependency dependency : holder.getProject().getDependencies() ) {
-         try {
-            org.eclipse.aether.artifact.Artifact filter = new org.eclipse.aether.artifact.DefaultArtifact( dependency.getGroupId(), dependency.getArtifactId(), dependency.getClassifier(), dependency.getType(), dependency.getVersion() );
-            final DependencyFilter classpathFlter = DependencyFilterUtils.classpathFilter( JavaScopes.RUNTIME );
-            final CollectRequest collectRequest = new CollectRequest();
-            collectRequest.setRoot( new org.eclipse.aether.graph.Dependency( filter, JavaScopes.RUNTIME ) );
-            collectRequest.setRepositories( Booter.newRepositories( system, session ) );
-            for( ArtifactRepository remoteRepository : holder.getProject().getRemoteArtifactRepositories() ) {
-               collectRequest.addRepository( new RemoteRepository.Builder( remoteRepository.getId(), "default", remoteRepository.getUrl() ).build() );
+         org.eclipse.aether.artifact.Artifact dependencyArtifact = getAetherArtifact( dependency );
+         boolean shouldResolveFlag = exclude == null || !exclude.contains( dependencyArtifact );
+         if( shouldResolveFlag ) {
+            try {
+               final DependencyFilter classpathFlter = DependencyFilterUtils.classpathFilter( JavaScopes.RUNTIME );
+               final CollectRequest collectRequest = new CollectRequest();
+               collectRequest.setRoot( new org.eclipse.aether.graph.Dependency( dependencyArtifact, JavaScopes.RUNTIME ) );
+               collectRequest.setRepositories( Booter.newRepositories( system, session ) );
+               for( ArtifactRepository remoteRepository : holder.getProject().getRemoteArtifactRepositories() ) {
+                  collectRequest.addRepository( new RemoteRepository.Builder( remoteRepository.getId(), "default", remoteRepository.getUrl() ).build() );
+               }
+               final DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, classpathFlter );
+               final List<ArtifactResult> artifactResults = system.resolveDependencies( session, dependencyRequest ).getArtifactResults();
+               for( ArtifactResult artifactResult : artifactResults ) {
+                  result.add( artifactResult.getArtifact() );
+               }
             }
-            final DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, classpathFlter );
-            final List<ArtifactResult> artifactResults = system.resolveDependencies( session, dependencyRequest ).getArtifactResults();
-            for( ArtifactResult artifactResult : artifactResults ) {
-               result.add( artifactResult.getArtifact() );
+            catch( Throwable exception ) {
+               throw new RuntimeException( String.format( "Error resolving dependency: %s", dependency ), exception );
             }
-         }
-         catch( Throwable exception ) {
-            throw new RuntimeException( String.format( "Error resolving dependency: %s", dependency ), exception );
          }
       }
       return result;
    }
 
+   public static org.eclipse.aether.artifact.Artifact getAetherArtifact( org.apache.maven.artifact.Artifact artifact ) {
+      return new DefaultArtifact( artifact.getGroupId(), artifact.getArtifactId(), artifact.getClassifier(), mapTypeToExtension( artifact.getType() ), artifact.getVersion() );
+   }
+
+   public static String mapTypeToExtension( String type ) {
+      final CaseInsensitiveMap<String> map = new CaseInsensitiveMap<String>();
+      map.put( "bundle", "jar" );
+      return map.containsKey( type ) ? map.get( type ) : type;
+   }
+
+   public static org.eclipse.aether.artifact.Artifact getAetherArtifact( Dependency dependency ) {
+      return new org.eclipse.aether.artifact.DefaultArtifact( dependency.getGroupId(), dependency.getArtifactId(), dependency.getClassifier(), dependency.getType(), dependency.getVersion() );
+   }
+
    public static List<Artifact> resolveDependencies( MavenProjectHolder holder ) {
-      return resolveDependencies( holder, null );
+      return resolveDependencies( holder, new ArrayList<Artifact>() );
+   }
+
+   public static List<Artifact> resolveDependencies( MavenProjectHolder holder, List<Artifact> exclude ) {
+      return resolveDependencies( holder, ( RepositorySystemSession )null, exclude );
    }
 }
