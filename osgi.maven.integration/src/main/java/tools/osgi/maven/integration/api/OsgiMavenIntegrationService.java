@@ -194,6 +194,13 @@ public class OsgiMavenIntegrationService {
                   System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
                }
             }
+
+            // Removal Pending
+            final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
+            for( Bundle removalPending : fw.getRemovalPendingBundles() ) {
+               // System.out.println( String.format( "Removal Pending: %s(%s)", removalPending.getSymbolicName(), removalPending.getBundleId() ) );
+               fw.refreshBundles( Arrays.asList( removalPending ) );
+            }
          }
 
          // Stop Existing Project Bundles
