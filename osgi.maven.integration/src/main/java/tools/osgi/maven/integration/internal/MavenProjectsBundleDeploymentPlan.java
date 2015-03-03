@@ -413,6 +413,9 @@ public class MavenProjectsBundleDeploymentPlan {
 
    private BundleContext bundleContext;
    private List<MavenDependencyBundleDeploymentPlan> dependencyPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan>();
+   private Duration initDependencyPlansDuration;
+   private Duration initInstallOrderDuration;
+   private Duration initProjectPlansDuration;
    private List<AbstractBundleDeploymentPlan> installOrder = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
    private List<MavenProjectHolder> mavenProjects = new ArrayList<MavenProjectHolder>();
    private List<MavenProjectBundleDeploymentPlan> projectPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan>();
@@ -443,6 +446,18 @@ public class MavenProjectsBundleDeploymentPlan {
          }
       }
       return result;
+   }
+
+   public Duration getInitDependencyPlansDuration() {
+      return initDependencyPlansDuration;
+   }
+
+   public Duration getInitInstallOrderDuration() {
+      return initInstallOrderDuration;
+   }
+
+   public Duration getInitProjectPlansDuration() {
+      return initProjectPlansDuration;
    }
 
    public List<AbstractBundleDeploymentPlan> getInstallOrder() {
@@ -646,6 +661,14 @@ public class MavenProjectsBundleDeploymentPlan {
       return new ArrayList<Artifact>( result );
    }
 
+   private List<Artifact> getMavenProjectArtifacts() {
+      final List<Artifact> result = new ArrayList<Artifact>();
+      for( MavenProjectHolder holder : getMavenProjects() ) {
+         result.add( MavenUtils.getAetherArtifact( holder.getProject().getArtifact() ) );
+      }
+      return result;
+   }
+
    private List<Artifact> getUnplannedMavenDependencies( MavenDependencyBundleDeploymentPlan plan ) {
       final List<Artifact> subDependencies = new ArrayList<Artifact>();
       for( BundleImportRequirement requirement : plan.getImportRequirements() ) {
@@ -682,8 +705,7 @@ public class MavenProjectsBundleDeploymentPlan {
       final Date startTime = new Date();
       dependencyPlans.clear();
       addMavenDependencyPlans( getMavenDependenciesFromProjectPlans() );
-      final Date endTime = new Date();
-      printDuration( startTime, endTime, "Init Dependency Plans" );
+      initDependencyPlansDuration = new Duration( startTime, new Date() );
    }
 
    private void initInstallOrder() {
@@ -692,8 +714,7 @@ public class MavenProjectsBundleDeploymentPlan {
       installOrder.addAll( dependencyPlans );
       installOrder.addAll( projectPlans );
       sortInstallOrder( installOrder );
-      final Date endTime = new Date();
-      printDuration( startTime, endTime, "Init Install Order" );
+      initInstallOrderDuration = new Duration( startTime, new Date() );
    }
 
    private void initProjectPlans() {
@@ -709,17 +730,11 @@ public class MavenProjectsBundleDeploymentPlan {
          plan.setImportRequirements( requirements );
          projectPlans.add( plan );
       }
-      final Date endTime = new Date();
-      printDuration( startTime, endTime, "Init Project Plans" );
+      initProjectPlansDuration = new Duration( startTime, new Date() );
    }
 
    private boolean isCircular( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
       return planA.isDependentOn( planB ) && planB.isDependentOn( planA );
-   }
-
-   private void printDuration( Date startTime, Date endTime, String description ) {
-      final long seconds = ( endTime.getTime() - startTime.getTime() ) / 1000;
-      System.out.println( String.format( "%s: %s Seconds", description, seconds ) );
    }
 
    private List<Artifact> resolveAllMavenDependencies() {
@@ -732,7 +747,7 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private List<BundleImportRequirement> resolveBundleImportRequirements( BundleManifest manifest ) {
-      resolveAllMavenDependencies(); // TODO: Need to resolve dependencies excluding maven projects
+      resolveAllMavenDependencies();
       final List<BundleImportRequirement> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
       for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
          final BundleImportRequirement requirement = new BundleImportRequirement( importedPackage );
@@ -774,14 +789,6 @@ public class MavenProjectsBundleDeploymentPlan {
          resolvedMavenDependencies.put( holder, MavenUtils.resolveDependencies( holder, session, getMavenProjectArtifacts() ) );
       }
       return resolvedMavenDependencies.get( holder );
-   }
-
-   private List<Artifact> getMavenProjectArtifacts() {
-      final List<Artifact> result = new ArrayList<Artifact>();
-      for( MavenProjectHolder holder : getMavenProjects() ) {
-         result.add( MavenUtils.getAetherArtifact( holder.getProject().getArtifact() ) );
-      }
-      return result;
    }
 
    private void sortInstallOrder( List<AbstractBundleDeploymentPlan> current ) {

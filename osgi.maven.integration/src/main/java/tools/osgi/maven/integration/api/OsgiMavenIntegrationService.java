@@ -11,6 +11,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -47,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
 import tools.osgi.analyzer.api.UseConflict;
+import tools.osgi.maven.integration.internal.Duration;
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
@@ -152,6 +154,8 @@ public class OsgiMavenIntegrationService {
          @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
       try {
+         final Date startTime = new Date();
+
          // Validate Workspace Exists
          final File workspaceFolder = new File( workspacePath );
          if( !workspaceFolder.exists() ) {
@@ -177,11 +181,13 @@ public class OsgiMavenIntegrationService {
 
          // Plan Only
          if( planOnly ) {
+            printSummary( startTime, deploymentPlan );
             return;
          }
 
          // Stop If Validation Errors
          if( deploymentPlan.isValidationErrors() ) {
+            printSummary( startTime, deploymentPlan );
             return;
          }
 
@@ -270,9 +276,36 @@ public class OsgiMavenIntegrationService {
             }
             System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
          }
+
+         // Print Durations
+         printSummary( startTime, deploymentPlan );
       }
       catch( Throwable exception ) {
          exception.printStackTrace();
+      }
+   }
+
+   private void printSummary( Date startTime, MavenProjectsBundleDeploymentPlan deploymentPlan ) {
+      System.out.println( "" );
+      System.out.println( "" );
+      System.out.println( "===============================================" );
+      System.out.println( "Deploy Summary" );
+      System.out.println( "===============================================" );
+      printDeploymentPlanDurations( deploymentPlan );
+      System.out.println( "-----------------------------------------------" );
+      printDuration( new Duration( startTime, new Date() ), "Total Deploy Time" );
+      System.out.println( "" );
+   }
+
+   private void printDeploymentPlanDurations( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
+      printDuration( deploymentPlan.getInitDependencyPlansDuration(), "Init Dependency Plans" );
+      printDuration( deploymentPlan.getInitProjectPlansDuration(), "Init Project Plans" );
+      printDuration( deploymentPlan.getInitInstallOrderDuration(), "Init Install Order" );
+   }
+
+   private void printDuration( Duration duration, String description ) {
+      if( duration != null ) {
+         System.out.println( duration.getFormatted( description ) );
       }
    }
 
