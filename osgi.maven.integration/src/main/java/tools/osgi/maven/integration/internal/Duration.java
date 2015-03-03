@@ -55,15 +55,43 @@ public class Duration {
       return String.format( "%s: %s", description, getFormatted() );
    }
 
+   public Long getFormattedDays() {
+      return getTotalDays();
+   }
+
+   public Long getFormattedHours() {
+      return getTotalHours() - ( getTotalDays() * 24 );
+   }
+
+   public Long getFormattedMinutes() {
+      return getTotalMinutes() - ( getTotalHours() * 60 );
+   }
+
+   public Long getFormattedSeconds() {
+      return getTotalSeconds() - ( getTotalMinutes() * 60 );
+   }
+
    public String getFormatted() {
       final StringBuffer result = new StringBuffer();
-      result.append( getTotalDays() > 0 ? String.format( "%s Days", getTotalDays() ) : "" );
-      result.append( getTotalHours() > 0 && getTotalDays() > 0 ? ", " : "" );
-      result.append( getTotalHours() > 0 ? String.format( "%s Hours", getTotalHours() ) : "" );
-      result.append( getTotalMinutes() > 0 && getTotalHours() > 0 ? ", " : "" );
-      result.append( getTotalMinutes() > 0 ? String.format( "%s Minutes", getTotalMinutes() ) : "" );
-      result.append( getTotalMinutes() > 0 ? ", " : "" );
-      result.append( String.format( "%s Seconds", getTotalSeconds() ) );
+      boolean useDivider = false;
+      if( getFormattedDays() > 0 ) {
+         result.append( String.format( "%s Days", getFormattedDays() ) );
+         useDivider = true;
+      }
+      if( getFormattedHours() > 0 ) {
+         result.append( useDivider ? ", " : "" );
+         result.append( String.format( "%s Hours", getFormattedHours() ) );
+         useDivider = true;
+      }
+      if( getFormattedMinutes() > 0 ) {
+         result.append( useDivider ? ", " : "" );
+         result.append( String.format( "%s Minutes", getFormattedMinutes() ) );
+         useDivider = true;
+      }
+      if( getFormattedSeconds() > 0 || !useDivider ) {
+         result.append( useDivider ? ", " : "" );
+         result.append( String.format( "%s Seconds", getFormattedSeconds() ) );
+      }
       return result.toString();
    }
 }
