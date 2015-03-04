@@ -15,9 +15,10 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.wiring.BundleWiring;
-import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.util.tracker.ServiceTracker;
 import org.springframework.context.ApplicationContext;
+
+// install -start assembly:/home/developer/git/osgi-tools/osgi.analyzer/bin/maven/classes
 
 public class OsgiAnalyzerCommandService {
 
@@ -33,14 +34,14 @@ public class OsgiAnalyzerCommandService {
                names = { "-m", "--missing-dependencies" },
                presentValue = "true",
                absentValue = "false") boolean includeMissingDependencies,
-               @Descriptor("Find all bundles with use conflicts") @Parameter(
-                     names = { "-u", "--use-conflicts" },
-                     presentValue = "true",
-                     absentValue = "false") boolean includeUseConflicts,
-                     @Descriptor("Find all issues with bundles") @Parameter(
-                           names = { "-a", "--all" },
-                           presentValue = "true",
-                           absentValue = "false") boolean includeAll
+         @Descriptor("Find all bundles with use conflicts") @Parameter(
+               names = { "-u", "--use-conflicts" },
+               presentValue = "true",
+               absentValue = "false") boolean includeUseConflicts,
+         @Descriptor("Find all issues with bundles") @Parameter(
+               names = { "-a", "--all" },
+               presentValue = "true",
+               absentValue = "false") boolean includeAll
          ) {
       try {
          if( includeMissingDependencies || includeAll ) {
@@ -62,7 +63,7 @@ public class OsgiAnalyzerCommandService {
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-               @Descriptor("Bundle ID to diagnose issues") String bundleId
+         @Descriptor("Bundle ID to diagnose issues") String bundleId
          ) {
       try {
          // Get Bundle
@@ -88,56 +89,65 @@ public class OsgiAnalyzerCommandService {
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-               @Descriptor("Class name that got NoClassDefFoundError") String className
+         @Descriptor("Class name that got NoClassDefFoundError") String className
          ) {
       try {
          System.out.println( "Class: " + className );
          final List<Bundle> bundles = getOsgiAnalyzerService().getBundleForClassName( className );
          final List<Bundle> success = new ArrayList<Bundle>();
          final List<Bundle> failure = new ArrayList<Bundle>();
-         for( Bundle sourceBundle : bundles ) {
-            System.out.println( String.format( "Providing Bundle: %s(%s)", sourceBundle.getSymbolicName(), sourceBundle.getBundleId() ) );
-            for( Bundle refBundle : getOsgiAnalyzerService().getDependentBundles( sourceBundle ) ) {
-               final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
-               @SuppressWarnings("unused")
-               final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
-               try {
-                  refBundle.loadClass( className );
-                  success.add( refBundle );
-               }
-               catch( Exception exception ) {
-                  failure.add( refBundle );
-                  if( verbose ) {
-                     exception.printStackTrace();
+         if( !bundles.isEmpty() ) {
+            for( Bundle sourceBundle : bundles ) {
+               System.out.println( String.format( "Providing Bundle: %s(%s)", sourceBundle.getSymbolicName(), sourceBundle.getBundleId() ) );
+               for( Bundle refBundle : getOsgiAnalyzerService().getDependentBundles( sourceBundle ) ) {
+                  final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
+                  @SuppressWarnings("unused")
+                  final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
+                  try {
+                     refBundle.loadClass( className );
+                     success.add( refBundle );
                   }
+                  catch( Exception exception ) {
+                     failure.add( refBundle );
+                     if( verbose ) {
+                        exception.printStackTrace();
+                     }
 
-                  if( wiring != null ) {
-                     //                     wiring.getClassLoader().get
+                     if( wiring != null ) {
+                        //                     wiring.getClassLoader().get
+                     }
+
                   }
-
                }
             }
+         }
+         else {
+            System.out.println( String.format( "No Providing Bundles Found for: %s", className ) );
          }
 
          // Print
          final String line = "==========================================================";
-         System.out.println( "" );
-         System.out.println( "Successful" );
-         System.out.println( line );
-         for( Bundle refBundle : success ) {
-            final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
-            final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
-            System.out.println( String.format( "  %s(%s) successfully loaded class with classloader: %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+         if( !success.isEmpty() ) {
+            System.out.println( "" );
+            System.out.println( "Successful" );
+            System.out.println( line );
+            for( Bundle refBundle : success ) {
+               final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
+               final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
+               System.out.println( String.format( "  %s(%s) successfully loaded class with classloader: %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+            }
          }
-         System.out.println( "" );
-         System.out.println( "Failure" );
-         System.out.println( line );
-         for( Bundle refBundle : failure ) {
-            final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
-            final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
-            System.out.println( String.format( "  %s(%s) failed to load class with classloader, %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+         if( !failure.isEmpty() ) {
+            System.out.println( "" );
+            System.out.println( "Failure" );
+            System.out.println( line );
+            for( Bundle refBundle : failure ) {
+               final BundleWiring wiring = refBundle.adapt( BundleWiring.class );
+               final ClassLoader loader = wiring != null ? wiring.getClassLoader() : null;
+               System.out.println( String.format( "  %s(%s) failed to load class with classloader, %s", refBundle.getSymbolicName(), refBundle.getBundleId(), loader ) );
+            }
+            System.out.println( "" );
          }
-         System.out.println( "" );
 
          // MBean Example
          Set<ObjectInstance> beans = getMBeanServer().queryMBeans( null, null );
@@ -147,11 +157,11 @@ public class OsgiAnalyzerCommandService {
             // System.out.println( info.getDescriptor() );
          }
 
-         // Removal Pending
-         final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
-         for( Bundle removalPending : fw.getRemovalPendingBundles() ) {
-            System.out.println( String.format( "Removal Pending: %s(%s)", removalPending.getSymbolicName(), removalPending.getBundleId() ) );
-         }
+         //         // Removal Pending
+         //         final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
+         //         for( Bundle removalPending : fw.getRemovalPendingBundles() ) {
+         //            System.out.println( String.format( "Removal Pending: %s(%s)", removalPending.getSymbolicName(), removalPending.getBundleId() ) );
+         //         }
       }
       catch( Exception exception ) {
          exception.printStackTrace();
@@ -165,7 +175,7 @@ public class OsgiAnalyzerCommandService {
                names = { "-v", "--verbose" },
                presentValue = "true",
                absentValue = "false") boolean verbose,
-               @Descriptor("Bundle ID to diagnose issues") String bundleId
+         @Descriptor("Bundle ID to diagnose issues") String bundleId
          ) {
       try {
          final Bundle bundle = getBundleByNameOrId( bundleId );
