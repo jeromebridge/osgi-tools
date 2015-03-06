@@ -548,11 +548,11 @@ public class OsgiMavenIntegrationService {
          if( isVirgoEnvironment() && plan.isWebBundle() ) {
             if( plan.getFile().isDirectory() ) {
                final File jarFile = plan.createJarFile();
-               final DeploymentIdentity id = getApplicationDeployer().deploy( jarFile.toURI() );
+               final DeploymentIdentity id = getApplicationDeployer().install( jarFile.toURI() );
                result = getBundleByNameOrId( id.getSymbolicName() );
             }
             else {
-               final DeploymentIdentity id = getApplicationDeployer().deploy( plan.getFile().toURI() );
+               final DeploymentIdentity id = getApplicationDeployer().install( plan.getFile().toURI() );
                result = getBundleByNameOrId( id.getSymbolicName() );
             }
          }
