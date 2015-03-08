@@ -26,6 +26,7 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.graph.DependencyFilter;
 import org.eclipse.aether.repository.LocalRepository;
@@ -49,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
 import tools.osgi.analyzer.api.UseConflict;
 import tools.osgi.maven.integration.internal.Duration;
+import tools.osgi.maven.integration.internal.FileUtils;
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
@@ -57,6 +59,7 @@ import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.B
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
+import tools.osgi.maven.integration.internal.MavenUtils;
 import tools.osgi.maven.integration.internal.ObrUtils;
 import tools.osgi.maven.integration.internal.aether.Booter;
 
@@ -67,6 +70,7 @@ public class OsgiMavenIntegrationService {
    private static final Logger LOG = LoggerFactory.getLogger( OsgiMavenIntegrationService.class );
 
    private BundleContext bundleContext;
+   private List<DeployedMavenProject> deployedMavenProjects = new ArrayList<DeployedMavenProject>();
 
    public OsgiMavenIntegrationService( BundleContext bundleContext ) {
       this.bundleContext = bundleContext;
@@ -119,9 +123,13 @@ public class OsgiMavenIntegrationService {
                names = { "-oi", "--show-optional-imports" },
                presentValue = "true",
                absentValue = "false") boolean showOptionalImports,
+         @Descriptor("Force projects to be reinstalled even if no changes") @Parameter(
+               names = { "-f", "--force" },
+               presentValue = "true",
+               absentValue = "false") boolean force,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, showOptionalImports, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, showOptionalImports, force, workspacePath, null );
    }
 
    @Descriptor("Deploys all the subfolders of the specified directory if they are compiled Maven projects that are also bundles.")
@@ -150,6 +158,10 @@ public class OsgiMavenIntegrationService {
                names = { "-oi", "--show-optional-imports" },
                presentValue = "true",
                absentValue = "false") boolean showOptionalImports,
+         @Descriptor("Force projects to be reinstalled even if no changes") @Parameter(
+               names = { "-f", "--force" },
+               presentValue = "true",
+               absentValue = "false") boolean force,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
          @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
@@ -174,9 +186,16 @@ public class OsgiMavenIntegrationService {
             throw new RuntimeException( "No Repository Admin service running" );
          }
 
+         // Force
+         if( force ) {
+            deployedMavenProjects.clear();
+         }
+
          // Load Maven Projects
          final List<MavenProjectHolder> mavenProjects = getMavenProjects( workspaceFolder, projectFilter );
-         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects );
+
+         // Deployment Plan
+         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects, deployedMavenProjects );
          printDeploymentPlan( deploymentPlan, showOptionalImports, verbose );
 
          // Plan Only
@@ -199,9 +218,11 @@ public class OsgiMavenIntegrationService {
                   existing.uninstall();
                   System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
                }
+
+               removeDeployed( existing );
             }
 
-            // Removal Pending
+            // Clear Removal Pending
             final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
             for( Bundle removalPending : fw.getRemovalPendingBundles() ) {
                // System.out.println( String.format( "Removal Pending: %s(%s)", removalPending.getSymbolicName(), removalPending.getBundleId() ) );
@@ -240,6 +261,9 @@ public class OsgiMavenIntegrationService {
                      System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );
                      throw new RuntimeException( "Failed to install: " + plan, exception );
                   }
+
+                  // Append To Deployed List
+                  addDeployed( plan, installedBundles.get( installedBundles.size() - 1 ) );
                }
             }
          }
@@ -282,30 +306,6 @@ public class OsgiMavenIntegrationService {
       }
       catch( Throwable exception ) {
          exception.printStackTrace();
-      }
-   }
-
-   private void printSummary( Date startTime, MavenProjectsBundleDeploymentPlan deploymentPlan ) {
-      System.out.println( "" );
-      System.out.println( "" );
-      System.out.println( "===============================================" );
-      System.out.println( "Deploy Summary" );
-      System.out.println( "===============================================" );
-      printDeploymentPlanDurations( deploymentPlan );
-      System.out.println( "-----------------------------------------------" );
-      printDuration( new Duration( startTime, new Date() ), "Total Deploy Time" );
-      System.out.println( "" );
-   }
-
-   private void printDeploymentPlanDurations( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
-      printDuration( deploymentPlan.getInitDependencyPlansDuration(), "Init Dependency Plans" );
-      printDuration( deploymentPlan.getInitProjectPlansDuration(), "Init Project Plans" );
-      printDuration( deploymentPlan.getInitInstallOrderDuration(), "Init Install Order" );
-   }
-
-   private void printDuration( Duration duration, String description ) {
-      if( duration != null ) {
-         System.out.println( duration.getFormatted( description ) );
       }
    }
 
@@ -365,6 +365,20 @@ public class OsgiMavenIntegrationService {
                throw new RuntimeException( String.format( "Error resolving dependency: %s", dependency ), exception );
             }
          }
+      }
+   }
+
+   private void addDeployed( AbstractBundleDeploymentPlan plan, Bundle bundle ) {
+      if( plan instanceof MavenProjectBundleDeploymentPlan ) {
+         final MavenProjectBundleDeploymentPlan mavenPlan = ( MavenProjectBundleDeploymentPlan )plan;
+         final DeployedMavenProject deployed = new DeployedMavenProject();
+         deployed.setBundle( bundle );
+         deployed.setArtifact( MavenUtils.getAetherArtifact( mavenPlan.getMavenProjectHolder().getProject().getArtifact() ) );
+         deployed.setMavenProjectFolder( mavenPlan.getMavenProjectHolder().getProject().getBasedir() );
+         deployed.setChecksum( FileUtils.md5HexForDir( deployed.getMavenProjectFolder() ) );
+
+         removeDeployed( deployed.getArtifact() );
+         deployedMavenProjects.add( deployed );
       }
    }
 
@@ -442,6 +456,39 @@ public class OsgiMavenIntegrationService {
       return result;
    }
 
+   private DeployedMavenProject getDeployed( Artifact artifact ) {
+      DeployedMavenProject result = null;
+      for( DeployedMavenProject deployed : deployedMavenProjects ) {
+         if( deployed.getArtifact().equals( artifact ) ) {
+            result = deployed;
+            break;
+         }
+      }
+      return result;
+   }
+
+   private DeployedMavenProject getDeployed( Bundle bundle ) {
+      DeployedMavenProject result = null;
+      for( DeployedMavenProject deployed : deployedMavenProjects ) {
+         if( deployed.getBundle().equals( bundle ) ) {
+            result = deployed;
+            break;
+         }
+      }
+      return result;
+   }
+
+   private DeployedMavenProject getDeployed( File mavenProjectFolder ) {
+      DeployedMavenProject result = null;
+      for( DeployedMavenProject deployed : deployedMavenProjects ) {
+         if( deployed.getMavenProjectFolder().equals( mavenProjectFolder ) ) {
+            result = deployed;
+            break;
+         }
+      }
+      return result;
+   }
+
    private Bundle getExisting( AbstractBundleDeploymentPlan plan ) {
       try {
          Bundle result = null;
@@ -495,16 +542,21 @@ public class OsgiMavenIntegrationService {
          final List<MavenProjectHolder> result = new ArrayList<MavenProjectHolder>();
          final List<File> mavenProjectFolders = getMavenProjectFolders( workspaceFolder );
          for( File mavenProjectFolder : mavenProjectFolders ) {
-            final File pomFile = new File( mavenProjectFolder.getAbsolutePath() + File.separator + "pom.xml" );
-            final MavenRequest mavenRequest = new MavenRequest();
-            mavenRequest.setPom( pomFile.getAbsolutePath() );
-            final ClassLoader classLoader = bundleContext.getBundle().adapt( BundleWiring.class ).getClassLoader();
-            final MavenEmbedder mavenEmbedder = new MavenEmbedder( classLoader, mavenRequest );
-            final MavenProject project = mavenEmbedder.readProject( pomFile );
-            if( isOsgiBundle( project ) ) {
-               if( projectFilter == null || projectFilter.isEmpty() || projectFilter.contains( project.getArtifactId() ) ) {
-                  result.add( new MavenProjectHolder( mavenEmbedder, project ) );
+            if( isMavenProjectChanged( mavenProjectFolder ) ) {
+               final File pomFile = new File( mavenProjectFolder.getAbsolutePath() + File.separator + "pom.xml" );
+               final MavenRequest mavenRequest = new MavenRequest();
+               mavenRequest.setPom( pomFile.getAbsolutePath() );
+               final ClassLoader classLoader = bundleContext.getBundle().adapt( BundleWiring.class ).getClassLoader();
+               final MavenEmbedder mavenEmbedder = new MavenEmbedder( classLoader, mavenRequest );
+               final MavenProject project = mavenEmbedder.readProject( pomFile );
+               if( isOsgiBundle( project ) ) {
+                  if( projectFilter == null || projectFilter.isEmpty() || projectFilter.contains( project.getArtifactId() ) ) {
+                     result.add( new MavenProjectHolder( mavenEmbedder, project ) );
+                  }
                }
+            }
+            else {
+               System.out.println( String.format( "%s Not Changed, Skipping", mavenProjectFolder.getName() ) );
             }
          }
          return result;
@@ -566,6 +618,10 @@ public class OsgiMavenIntegrationService {
       }
    }
 
+   private boolean isDeployed( File mavenProjectFolder ) {
+      return getDeployed( mavenProjectFolder ) != null;
+   }
+
    private boolean isLong( String value ) {
       boolean result = true;
       try {
@@ -581,6 +637,16 @@ public class OsgiMavenIntegrationService {
       boolean result = folder.exists();
       result = result && folder.isDirectory();
       result = result && new File( folder.getAbsolutePath() + File.separator + "pom.xml" ).exists();
+      return result;
+   }
+
+   private boolean isMavenProjectChanged( File mavenProjectFolder ) {
+      boolean result = true;
+      if( isDeployed( mavenProjectFolder ) ) {
+         final String newChecksum = FileUtils.md5HexForDir( mavenProjectFolder );
+         final String deployedChecksum = getDeployed( mavenProjectFolder ).getChecksum();
+         result = !newChecksum.equals( deployedChecksum );
+      }
       return result;
    }
 
@@ -601,16 +667,21 @@ public class OsgiMavenIntegrationService {
    private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
       System.out.println( "Deployment Plan" );
       System.out.println( "===============================================" );
-      for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
-         System.out.println( plan );
-         if( verbose ) {
-            for( BundleImportRequirement importRequirement : plan.getImportRequirements() ) {
-               System.out.println( "   " + importRequirement );
-            }
-            for( MavenProjectBundleDeploymentPlan dependent : deploymentPlan.getDependentMavenProjectBundleDeploymentPlans( plan ) ) {
-               System.out.println( "   Maven Project Reference: " + dependent );
+      if( !deploymentPlan.getInstallOrder().isEmpty() ) {
+         for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
+            System.out.println( plan );
+            if( verbose ) {
+               for( BundleImportRequirement importRequirement : plan.getImportRequirements() ) {
+                  System.out.println( "   " + importRequirement );
+               }
+               for( MavenProjectBundleDeploymentPlan dependent : deploymentPlan.getDependentMavenProjectBundleDeploymentPlans( plan ) ) {
+                  System.out.println( "   Maven Project Reference: " + dependent );
+               }
             }
          }
+      }
+      else {
+         System.out.println( "Nothing to deploy." );
       }
       System.out.println( "" );
       printUnresolved( deploymentPlan, verbose, Resolution.MANDATORY );
@@ -619,6 +690,18 @@ public class OsgiMavenIntegrationService {
       }
       System.out.println( "" );
       printValidationErrors( deploymentPlan, verbose );
+   }
+
+   private void printDeploymentPlanDurations( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
+      printDuration( deploymentPlan.getInitDependencyPlansDuration(), "Init Dependency Plans" );
+      printDuration( deploymentPlan.getInitProjectPlansDuration(), "Init Project Plans" );
+      printDuration( deploymentPlan.getInitInstallOrderDuration(), "Init Install Order" );
+   }
+
+   private void printDuration( Duration duration, String description ) {
+      if( duration != null ) {
+         System.out.println( duration.getFormatted( description ) );
+      }
    }
 
    @SuppressWarnings("unused")
@@ -639,6 +722,18 @@ public class OsgiMavenIntegrationService {
       catch( Exception exception ) {
          throw new RuntimeException( "Error printing OBR results", exception );
       }
+   }
+
+   private void printSummary( Date startTime, MavenProjectsBundleDeploymentPlan deploymentPlan ) {
+      System.out.println( "" );
+      System.out.println( "" );
+      System.out.println( "===============================================" );
+      System.out.println( "Deploy Summary" );
+      System.out.println( "===============================================" );
+      printDeploymentPlanDurations( deploymentPlan );
+      System.out.println( "-----------------------------------------------" );
+      printDuration( new Duration( startTime, new Date() ), "Total Deploy Time" );
+      System.out.println( "" );
    }
 
    private void printUnresolved( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose, Resolution resolution ) {
@@ -686,6 +781,20 @@ public class OsgiMavenIntegrationService {
       final Bundle[] refreshBundles = new Bundle[bundles.size()];
       bundles.toArray( refreshBundles );
       getPackageAdmin().refreshPackages( refreshBundles );
+   }
+
+   private void removeDeployed( Artifact artifact ) {
+      final DeployedMavenProject existing = getDeployed( artifact );
+      if( existing != null ) {
+         deployedMavenProjects.remove( existing );
+      }
+   }
+
+   private void removeDeployed( Bundle bundle ) {
+      final DeployedMavenProject existing = getDeployed( bundle );
+      if( existing != null ) {
+         deployedMavenProjects.remove( existing );
+      }
    }
 
    private Bundle update( AbstractBundleDeploymentPlan plan ) {

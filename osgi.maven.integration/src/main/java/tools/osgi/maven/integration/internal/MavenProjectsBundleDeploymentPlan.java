@@ -17,6 +17,7 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleWiring;
 
+import tools.osgi.maven.integration.api.DeployedMavenProject;
 import tools.osgi.maven.integration.api.JarBuilder;
 
 import com.springsource.util.osgi.manifest.BundleManifest;
@@ -413,6 +414,7 @@ public class MavenProjectsBundleDeploymentPlan {
 
    private BundleContext bundleContext;
    private List<MavenDependencyBundleDeploymentPlan> dependencyPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan>();
+   private List<DeployedMavenProject> deployedMavenProjects = new ArrayList<DeployedMavenProject>();
    private Duration initDependencyPlansDuration;
    private Duration initInstallOrderDuration;
    private Duration initProjectPlansDuration;
@@ -422,8 +424,13 @@ public class MavenProjectsBundleDeploymentPlan {
    private Map<MavenProjectHolder, List<Artifact>> resolvedMavenDependencies = new HashMap<MavenProjectHolder, List<Artifact>>();
 
    public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects ) {
+      this( bundleContext, mavenProjects, new ArrayList<DeployedMavenProject>() );
+   }
+
+   public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects, List<DeployedMavenProject> deployedMavenProjects ) {
       this.bundleContext = bundleContext;
       this.mavenProjects = new ArrayList<MavenProjectHolder>( mavenProjects );
+      this.deployedMavenProjects = new ArrayList<DeployedMavenProject>( deployedMavenProjects );
       init();
    }
 
@@ -625,8 +632,23 @@ public class MavenProjectsBundleDeploymentPlan {
       return result;
    }
 
+   private List<Artifact> getArtifactsToExcludeFromDependencuResolving() {
+      final List<Artifact> result = new ArrayList<Artifact>();
+      result.addAll( getMavenProjectArtifacts() );
+      result.addAll( getDeployedMavenProjectArtifacts() );
+      return result;
+   }
+
    private BundleManifest getBundleManifest( Bundle bundle ) {
       return BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
+   }
+
+   private List<Artifact> getDeployedMavenProjectArtifacts() {
+      final List<Artifact> result = new ArrayList<Artifact>();
+      for( DeployedMavenProject deployed : deployedMavenProjects ) {
+         result.add( deployed.getArtifact() );
+      }
+      return result;
    }
 
    private ExportedPackage getExportedPackage( Bundle bundle, ImportedPackage importedPackage ) {
@@ -786,7 +808,7 @@ public class MavenProjectsBundleDeploymentPlan {
 
    private List<Artifact> resolveMavenDependencies( MavenProjectHolder holder, RepositorySystemSession session ) {
       if( !resolvedMavenDependencies.containsKey( holder ) ) {
-         resolvedMavenDependencies.put( holder, MavenUtils.resolveDependencies( holder, session, getMavenProjectArtifacts() ) );
+         resolvedMavenDependencies.put( holder, MavenUtils.resolveDependencies( holder, session, getArtifactsToExcludeFromDependencuResolving() ) );
       }
       return resolvedMavenDependencies.get( holder );
    }
