@@ -556,7 +556,7 @@ public class OsgiMavenIntegrationService {
                }
             }
             else {
-               System.out.println( String.format( "%s Not Changed, Skipping", mavenProjectFolder.getName() ) );
+               System.out.println( String.format( "Skipping %s (Not Changed)", mavenProjectFolder.getName() ) );
             }
          }
          return result;
@@ -665,6 +665,7 @@ public class OsgiMavenIntegrationService {
    }
 
    private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
+      System.out.println( "" );
       System.out.println( "Deployment Plan" );
       System.out.println( "===============================================" );
       if( !deploymentPlan.getInstallOrder().isEmpty() ) {
