@@ -556,7 +556,7 @@ public class OsgiMavenIntegrationService {
                }
             }
             else {
-               System.out.println( String.format( "Skipping %s (Not Changed)", mavenProjectFolder.getName() ) );
+               LOG.debug( String.format( "Skipping %s (Not Changed)", mavenProjectFolder.getName() ) );
             }
          }
          return result;
