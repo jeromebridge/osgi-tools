@@ -14,6 +14,7 @@ import java.util.zip.ZipEntry;
 
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Exclusion;
 import org.apache.maven.project.MavenProject;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
@@ -27,6 +28,7 @@ import org.eclipse.aether.resolution.ArtifactResult;
 import org.eclipse.aether.resolution.DependencyRequest;
 import org.eclipse.aether.util.artifact.JavaScopes;
 import org.eclipse.aether.util.filter.DependencyFilterUtils;
+import org.eclipse.aether.util.filter.ExclusionsDependencyFilter;
 
 import tools.osgi.maven.integration.internal.aether.Booter;
 
@@ -100,13 +102,15 @@ public class MavenUtils {
          if( shouldResolveFlag ) {
             try {
                final DependencyFilter classpathFlter = DependencyFilterUtils.classpathFilter( JavaScopes.RUNTIME );
+               final DependencyFilter exclusionsFilter = getExclusionsFilter( dependency );
+               final DependencyFilter filter = DependencyFilterUtils.andFilter( classpathFlter, exclusionsFilter );
                final CollectRequest collectRequest = new CollectRequest();
                collectRequest.setRoot( new org.eclipse.aether.graph.Dependency( dependencyArtifact, JavaScopes.RUNTIME ) );
                collectRequest.setRepositories( Booter.newRepositories( system, session ) );
                for( ArtifactRepository remoteRepository : holder.getProject().getRemoteArtifactRepositories() ) {
                   collectRequest.addRepository( new RemoteRepository.Builder( remoteRepository.getId(), "default", remoteRepository.getUrl() ).build() );
                }
-               final DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, classpathFlter );
+               final DependencyRequest dependencyRequest = new DependencyRequest( collectRequest, filter );
                final List<ArtifactResult> artifactResults = system.resolveDependencies( session, dependencyRequest ).getArtifactResults();
                for( ArtifactResult artifactResult : artifactResults ) {
                   result.add( artifactResult.getArtifact() );
@@ -118,6 +122,14 @@ public class MavenUtils {
          }
       }
       return result;
+   }
+
+   private static ExclusionsDependencyFilter getExclusionsFilter( Dependency dependency ) {
+      final List<String> excludes = new ArrayList<String>();
+      for( Exclusion exclusion : dependency.getExclusions() ) {
+         excludes.add( String.format( "%s:%s", exclusion.getGroupId(), exclusion.getArtifactId() ) );
+      }
+      return new ExclusionsDependencyFilter( excludes );
    }
 
    public static org.eclipse.aether.artifact.Artifact getAetherArtifact( org.apache.maven.artifact.Artifact artifact ) {

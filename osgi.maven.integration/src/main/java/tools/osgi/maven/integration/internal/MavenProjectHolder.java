@@ -37,6 +37,13 @@ public class MavenProjectHolder {
    }
 
    @Override
+   public String toString() {
+      final StringBuffer result = new StringBuffer();
+      result.append( project != null ? project.toString() : "" );
+      return result.toString();
+   }
+
+   @Override
    public boolean equals( Object other ) {
       return project != null && other != null && other instanceof MavenProjectHolder && project.equals( ( ( MavenProjectHolder )other ).getProject() );
    }
