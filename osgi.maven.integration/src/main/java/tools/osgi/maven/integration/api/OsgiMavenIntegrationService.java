@@ -128,9 +128,13 @@ public class OsgiMavenIntegrationService {
                names = { "-f", "--force" },
                presentValue = "true",
                absentValue = "false") boolean force,
+         @Descriptor("Attempt to diagnose errors that happen during deployment") @Parameter(
+               names = { "-d", "--diagnose" },
+               presentValue = "true",
+               absentValue = "false") boolean diagnose,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, showOptionalImports, force, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, showOptionalImports, force, diagnose, workspacePath, null );
    }
 
    @Descriptor("Deploys all the subfolders of the specified directory if they are compiled Maven projects that are also bundles.")
@@ -163,6 +167,10 @@ public class OsgiMavenIntegrationService {
                names = { "-f", "--force" },
                presentValue = "true",
                absentValue = "false") boolean force,
+         @Descriptor("Attempt to diagnose errors that happen during deployment") @Parameter(
+               names = { "-d", "--diagnose" },
+               presentValue = "true",
+               absentValue = "false") boolean diagnose,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath,
          @Descriptor("List of projects to include from the workspace") String[] includeProjects
          ) {
@@ -259,8 +267,10 @@ public class OsgiMavenIntegrationService {
                      }
                   }
                   catch( Exception exception ) {
-                     System.out.println( String.format( "Failed to install: %s Reason: %s", plan , ExceptionUtils.getRootCauseMessage( exception ) ) );
-                     diagnoseInstallFailure( plan, exception );
+                     System.out.println( String.format( "Failed to install: %s Reason: %s", plan, ExceptionUtils.getRootCauseMessage( exception ) ) );
+                     if( diagnose ) {
+                        diagnoseInstallFailure( plan, exception );
+                     }
                      throw new RuntimeException( "Failed to install: " + plan, exception );
                   }
 
@@ -313,8 +323,17 @@ public class OsgiMavenIntegrationService {
 
    private void diagnoseInstallFailure( AbstractBundleDeploymentPlan plan, Exception exception ) {
       try {
+         System.out.println( "Diagnosing Install Exception..." );
          final List<UseConflict> conflicts = getOsgiAnalyzerService().findUseConflicts( plan.getManifest().toDictionary() );
-         System.out.println( conflicts );
+         if( !conflicts.isEmpty() ) {
+            System.out.println( "Uses Conflicts Found:" );
+            for( UseConflict conflict : conflicts ) {
+               System.out.println( "   " + conflict );
+            }
+         }
+         else {
+            System.out.println( "No Uses Conflicts Found:" );
+         }
       }
       catch( Throwable exception2 ) {
          LOG.error( "Failed to diagnose install failure", exception2 );
