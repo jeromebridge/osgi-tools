@@ -271,11 +271,20 @@ public class FindUsesConflictsTemplate {
                }
                final BundleWire usesConflictWire = BundleUtils.getBundleWire( bundleContext, usesConflictBundle, use.getPackageName() );
                if( usesConflictWire != null ) {
-                  if( !BundleUtils.containsExportForImport( usesConflictWire.getProviderWiring().getBundle(), match ) ) {
+                  final Bundle usesConflictProvidingBundle = usesConflictWire.getProviderWiring().getBundle();
+                  if( !BundleUtils.containsExportForImport( usesConflictProvidingBundle, match ) ) {
                      final com.springsource.util.osgi.manifest.ExportedPackage usesConflictExportPackage = getExportedPackage( usesConflictWire.getProviderWiring().getBundle(), match.getPackageName() );
                      result.add( new UsesConflict( bundleContext, callback.getManifest(), match, usesConflictBundle, usesConflictExportPackage ) );
                   }
                   else {
+                     // Multiple Matches
+                     final List<Bundle> allMatchingBundles = BundleUtils.findBundlesThatSatisfyImport( bundleContext, match );
+                     if( allMatchingBundles.size() > 1 ) {
+                        System.out.println( "Multiple bundles could match this import causing the uses conflict?" );
+                        System.out.println( allMatchingBundles );
+                     }
+
+                     // Crossed Wires?
                      final BundleWire wiring = callback.getBundleWire( match.getPackageName() );
                      if( wiring != null ) {
                         if( !wiring.getProviderWiring().getBundle().equals( usesConflictWire.getProviderWiring().getBundle() ) ) {
