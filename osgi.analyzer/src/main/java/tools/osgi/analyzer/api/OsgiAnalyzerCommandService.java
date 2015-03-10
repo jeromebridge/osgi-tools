@@ -34,10 +34,10 @@ public class OsgiAnalyzerCommandService {
                names = { "-m", "--missing-dependencies" },
                presentValue = "true",
                absentValue = "false") boolean includeMissingDependencies,
-         @Descriptor("Find all bundles with use conflicts") @Parameter(
+         @Descriptor("Find all bundles with uses conflicts") @Parameter(
                names = { "-u", "--use-conflicts" },
                presentValue = "true",
-               absentValue = "false") boolean includeUseConflicts,
+               absentValue = "false") boolean includeUsesConflicts,
          @Descriptor("Find all issues with bundles") @Parameter(
                names = { "-a", "--all" },
                presentValue = "true",
@@ -47,8 +47,8 @@ public class OsgiAnalyzerCommandService {
          if( includeMissingDependencies || includeAll ) {
             printBundlesWithMissingDependencies();
          }
-         if( includeUseConflicts || includeAll ) {
-            printBundlesWithUseConflicts();
+         if( includeUsesConflicts || includeAll ) {
+            printBundlesWithUsesConflicts();
          }
       }
       catch( Exception exception ) {
@@ -75,7 +75,7 @@ public class OsgiAnalyzerCommandService {
          // Print
          System.out.println( "Bundle: " + bundle );
          printUnresolvedImports( bundle, verbose );
-         printUseConflicts( bundle, verbose );
+         printUsesConflicts( bundle, verbose );
       }
       catch( Throwable exception ) {
          exception.printStackTrace();
@@ -259,19 +259,19 @@ public class OsgiAnalyzerCommandService {
       }
    }
 
-   private void printBundlesWithUseConflicts() {
-      final List<Bundle> useConflicts = getOsgiAnalyzerService().findBundlesWithUseConflicts();
-      if( useConflicts.size() > 0 ) {
+   private void printBundlesWithUsesConflicts() {
+      final List<Bundle> usesConflicts = getOsgiAnalyzerService().findBundlesWithUsesConflicts();
+      if( usesConflicts.size() > 0 ) {
          final String format = "| %1$-35s|%2$10s |%3$25s |";
          final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
          System.out.println( line );
          System.out.println( String.format( format, "Bundle", "Bundle ID", "Use Conflicts" ) );
          System.out.println( line );
-         for( Bundle bundle : useConflicts ) {
+         for( Bundle bundle : usesConflicts ) {
             final String bundleNameRaw = bundle.getSymbolicName();
             final String bundleName = bundleNameRaw.substring( 0, Math.min( 34, bundleNameRaw.length() ) );
             final Long bundleId = bundle.getBundleId();
-            final int numOfMissingDependencies = getOsgiAnalyzerService().findUseConflicts( bundle ).size();
+            final int numOfMissingDependencies = getOsgiAnalyzerService().findUsesConflicts( bundle ).size();
             System.out.println( String.format( format, bundleName, bundleId, numOfMissingDependencies ) );
          }
          System.out.println( line );
@@ -297,7 +297,7 @@ public class OsgiAnalyzerCommandService {
          System.out.println( "" );
          System.out.println( "" );
 
-         final Set<UseConflictResolutionSuggestion> suggestions = new HashSet<UseConflictResolutionSuggestion>();
+         final Set<UsesConflictResolutionSuggestion> suggestions = new HashSet<UsesConflictResolutionSuggestion>();
          for( MissingImport missingOptionalImport : unresolvedImports ) {
             if( missingOptionalImport.getReason().isPossibleResolutionAvailable() ) {
                if( verbose ) {
@@ -308,22 +308,22 @@ public class OsgiAnalyzerCommandService {
                      System.out.println( String.format( "Resolution: Refresh %s(%s)", missingOptionalImport.getMatch().getSymbolicName(), missingOptionalImport.getMatch().getBundleId() ) );
                   }
                }
-               else if( MissingOptionalImportReasonType.UseConflict.equals( missingOptionalImport.getReason() ) ) {
+               else if( MissingOptionalImportReasonType.UsesConflict.equals( missingOptionalImport.getReason() ) ) {
                   if( verbose ) {
-                     int useConflictIndex = 1;
-                     for( UseConflict useConflict : missingOptionalImport.getUseConflicts() ) {
-                        System.out.println( String.format( "Use Conflict %s: %s(%s)", useConflictIndex, useConflict.getUseConflictBundle().getSymbolicName(), useConflict.getUseConflictBundle().getBundleId() ) );
-                        System.out.println( String.format( "   Type: %s", useConflict.getType().name() ) );
-                        System.out.println( String.format( "   Import Package: %s(%s)", useConflict.getImportedPackage().getPackageName(), useConflict.getImportedPackage().getVersion() ) );
-                        if( UseConflictType.Wiring.equals( useConflict.getType() ) ) {
-                           System.out.println( String.format( "   Bundle Wire: %s(%s)", useConflict.getBundleWire().getProviderWiring().getBundle().getSymbolicName(), useConflict.getBundleWire().getProviderWiring().getBundle().getBundleId() ) );
-                           System.out.println( String.format( "   Use Conflict Bundle Wire: %s(%s)", useConflict.getUseConflictBundleWire().getProviderWiring().getBundle().getSymbolicName(), useConflict.getUseConflictBundleWire().getProviderWiring().getBundle().getBundleId() ) );
+                     int usesConflictIndex = 1;
+                     for( UsesConflict usesConflict : missingOptionalImport.getUsesConflicts() ) {
+                        System.out.println( String.format( "Uses Conflict %s: %s(%s)", usesConflictIndex, usesConflict.getUsesConflictBundle().getSymbolicName(), usesConflict.getUsesConflictBundle().getBundleId() ) );
+                        System.out.println( String.format( "   Type: %s", usesConflict.getType().name() ) );
+                        System.out.println( String.format( "   Import Package: %s(%s)", usesConflict.getImportedPackage().getPackageName(), usesConflict.getImportedPackage().getVersion() ) );
+                        if( UsesConflictType.Wiring.equals( usesConflict.getType() ) ) {
+                           System.out.println( String.format( "   Bundle Wire: %s(%s)", usesConflict.getBundleWire().getProviderWiring().getBundle().getSymbolicName(), usesConflict.getBundleWire().getProviderWiring().getBundle().getBundleId() ) );
+                           System.out.println( String.format( "   Uses Conflict Bundle Wire: %s(%s)", usesConflict.getUsesConflictBundleWire().getProviderWiring().getBundle().getSymbolicName(), usesConflict.getUsesConflictBundleWire().getProviderWiring().getBundle().getBundleId() ) );
                         }
-                        useConflictIndex++;
+                        usesConflictIndex++;
                      }
                   }
-                  for( UseConflict useConflict : missingOptionalImport.getUseConflicts() ) {
-                     suggestions.add( useConflict.getSuggestion() );
+                  for( UsesConflict usesConflict : missingOptionalImport.getUsesConflicts() ) {
+                     suggestions.add( usesConflict.getSuggestion() );
                   }
                }
             }
@@ -334,28 +334,28 @@ public class OsgiAnalyzerCommandService {
             System.out.println( String.format( "Possible Resolutions" ) );
             System.out.println( line );
 
-            for( UseConflictResolutionSuggestion suggestion : suggestions ) {
+            for( UsesConflictResolutionSuggestion suggestion : suggestions ) {
                System.out.println( String.format( "Suggestion: %s", suggestion ) );
             }
          }
       }
    }
 
-   private void printUseConflicts( Bundle bundle, boolean verbose ) {
-      final List<UseConflict> useConflicts = getOsgiAnalyzerService().findUseConflicts( bundle );
-      if( useConflicts.size() > 0 ) {
+   private void printUsesConflicts( Bundle bundle, boolean verbose ) {
+      final List<UsesConflict> usesConflicts = getOsgiAnalyzerService().findUsesConflicts( bundle );
+      if( usesConflicts.size() > 0 ) {
          final String format = "| %1$-10s| %2$-45s| %3$-35s|%4$20s | %5$-28s| %6$-28s|";
          final String line = new String( new char[String.format( format, "", "", "", "", "", "" ).length()] ).replace( "\0", "-" );
          System.out.println( line );
          System.out.println( String.format( format, "Type", "Import", "Conflict Bundle", "Conflict Bundle ID", "Import Version", "Conflict Version" ) );
          System.out.println( line );
-         for( UseConflict useConflict : useConflicts ) {
-            final String type = useConflict.getType().name();
-            final String importPackageName = useConflict.getImportedPackage().getPackageName();
-            final String conflictBundle = useConflict.getUseConflictBundle().getSymbolicName();
-            final String conflictBundleId = Long.toString( useConflict.getUseConflictBundle().getBundleId() );
-            final String importVersion = useConflict.getImportedPackage().getVersion().toString();
-            final String conflictVersion = UseConflictType.Header.equals( useConflict.getType() ) ? useConflict.getUseConflictImportedPackage().getVersion().toParseString() : useConflict.getUseConflictExportedPackage().getVersion().toString();
+         for( UsesConflict usesConflict : usesConflicts ) {
+            final String type = usesConflict.getType().name();
+            final String importPackageName = usesConflict.getImportedPackage().getPackageName();
+            final String conflictBundle = usesConflict.getUsesConflictBundle().getSymbolicName();
+            final String conflictBundleId = Long.toString( usesConflict.getUsesConflictBundle().getBundleId() );
+            final String importVersion = usesConflict.getImportedPackage().getVersion().toString();
+            final String conflictVersion = UsesConflictType.Header.equals( usesConflict.getType() ) ? usesConflict.getUsesConflictImportedPackage().getVersion().toParseString() : usesConflict.getUsesConflictExportedPackage().getVersion().toString();
             System.out.println( String.format( format, type, importPackageName, conflictBundle, conflictBundleId, importVersion, conflictVersion ) );
          }
          System.out.println( line );

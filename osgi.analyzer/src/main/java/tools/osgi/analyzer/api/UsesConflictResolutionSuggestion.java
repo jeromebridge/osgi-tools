@@ -3,11 +3,11 @@ package tools.osgi.analyzer.api;
 import org.osgi.framework.Bundle;
 
 /** Represents a suggestion to fix a Use Conflict in the current OSGi container */
-public class UseConflictResolutionSuggestion {
-   private UseConflictResolutionSuggestionType type = UseConflictResolutionSuggestionType.Null;
+public class UsesConflictResolutionSuggestion {
+   private UsesConflictResolutionSuggestionType type = UsesConflictResolutionSuggestionType.Null;
    private Bundle targetBundle;
 
-   public void setType( UseConflictResolutionSuggestionType type ) {
+   public void setType( UsesConflictResolutionSuggestionType type ) {
       this.type = type;
    }
 
@@ -19,21 +19,21 @@ public class UseConflictResolutionSuggestion {
       this.targetBundle = targetBundle;
    }
 
-   public UseConflictResolutionSuggestion( UseConflictResolutionSuggestionType type ) {
+   public UsesConflictResolutionSuggestion( UsesConflictResolutionSuggestionType type ) {
       this.type = type;
    }
 
-   public UseConflictResolutionSuggestionType getType() {
+   public UsesConflictResolutionSuggestionType getType() {
       return type;
    }
 
    @Override
    public String toString() {
       String result = "No Suggestion";
-      if( UseConflictResolutionSuggestionType.UninstallBundle.equals( type ) ) {
+      if( UsesConflictResolutionSuggestionType.UninstallBundle.equals( type ) ) {
          result = String.format( "uninstall %s // %s", targetBundle.getBundleId(), targetBundle.getSymbolicName() );
       }
-      else if( UseConflictResolutionSuggestionType.RefreshBundle.equals( type ) ) {
+      else if( UsesConflictResolutionSuggestionType.RefreshBundle.equals( type ) ) {
          result = String.format( "refresh %s // $s", targetBundle.getBundleId(), targetBundle.getSymbolicName() );
       }
       return result;
@@ -43,7 +43,7 @@ public class UseConflictResolutionSuggestion {
    public boolean equals( Object otherObj ) {
       boolean result = otherObj != null && otherObj.getClass().equals( getClass() );
       if( result ) {
-         final UseConflictResolutionSuggestion other = ( UseConflictResolutionSuggestion )otherObj;
+         final UsesConflictResolutionSuggestion other = ( UsesConflictResolutionSuggestion )otherObj;
          result = result && getType().equals( other.getType() );
          if( getTargetBundle() != null ) {
             result = result && getTargetBundle().equals( other.getTargetBundle() );

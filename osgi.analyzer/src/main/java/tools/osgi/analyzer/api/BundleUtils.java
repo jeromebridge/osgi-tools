@@ -38,6 +38,28 @@ public class BundleUtils {
       return result;
    }
 
+   public static ImportedPackage getImportedPackage( Bundle bundle, String packageName ) {
+      ImportedPackage result = null;
+      for( ImportedPackage importedPackage : BundleUtils.getImportedPackages( bundle ) ) {
+         if( importedPackage.getPackageName().equals( packageName ) ) {
+            result = importedPackage;
+            break;
+         }
+      }
+      return result;
+   }
+
+   public static ImportedPackage getImportedPackage( BundleManifest manifest, String packageName ) {
+      ImportedPackage result = null;
+      for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
+         if( importedPackage.getPackageName().equals( packageName ) ) {
+            result = importedPackage;
+            break;
+         }
+      }
+      return result;
+   }
+
    public static boolean isBundleResolved( Bundle bundle ) {
       return Bundle.RESOLVED == bundle.getState() || Bundle.ACTIVE == bundle.getState();
    }

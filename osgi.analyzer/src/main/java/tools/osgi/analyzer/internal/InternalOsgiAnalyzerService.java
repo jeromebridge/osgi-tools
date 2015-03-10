@@ -21,9 +21,9 @@ import tools.osgi.analyzer.api.BundleUtils;
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
 import tools.osgi.analyzer.api.MissingImport;
 import tools.osgi.analyzer.api.MissingOptionalImportReasonType;
-import tools.osgi.analyzer.api.UseConflict;
-import tools.osgi.analyzer.internal.FindUseConflictsTemplate.BundleFindUseConflictsCallback;
-import tools.osgi.analyzer.internal.FindUseConflictsTemplate.BundleManifestFindUseConflictsCallback;
+import tools.osgi.analyzer.api.UsesConflict;
+import tools.osgi.analyzer.internal.FindUsesConflictsTemplate.BundleFindUsesConflictsCallback;
+import tools.osgi.analyzer.internal.FindUsesConflictsTemplate.BundleManifestFindUsesConflictsCallback;
 
 import com.springsource.util.osgi.manifest.BundleManifest;
 import com.springsource.util.osgi.manifest.BundleManifestFactory;
@@ -103,10 +103,10 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
    }
 
    @Override
-   public List<Bundle> findBundlesWithUseConflicts() {
+   public List<Bundle> findBundlesWithUsesConflicts() {
       final List<Bundle> result = new ArrayList<Bundle>();
       for( Bundle bundle : bundleContext.getBundles() ) {
-         if( hasUseConflict( bundle ) ) {
+         if( hasUsesConflict( bundle ) ) {
             result.add( bundle );
          }
       }
@@ -119,19 +119,34 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
    }
 
    @Override
-   public List<UseConflict> findUseConflicts( Bundle bundle ) {
-      return getUseConflicts( bundle );
+   public List<UsesConflict> findUsesConflicts( Bundle bundle ) {
+      return getUsesConflicts( bundle );
    }
 
    @Override
-   public List<UseConflict> findUseConflicts( Dictionary<String, String> headers ) {
-      return getUseConflicts( BundleManifestFactory.createBundleManifest( headers, new DummyParserLogger() ) );
+   public List<UsesConflict> findUsesConflicts( Dictionary<String, String> headers ) {
+      return getUsesConflicts( BundleManifestFactory.createBundleManifest( headers, new DummyParserLogger() ) );
    }
 
    @Override
-   public List<UseConflict> findUseConflicts( Reader headers ) {
+   public List<UsesConflict> findUsesConflicts( Dictionary<String, String> headers, String packageName ) {
+      return getUsesConflicts( BundleManifestFactory.createBundleManifest( headers, new DummyParserLogger() ), packageName );
+   }
+
+   @Override
+   public List<UsesConflict> findUsesConflicts( Reader headers ) {
       try {
-         return getUseConflicts( BundleManifestFactory.createBundleManifest( headers, new DummyParserLogger() ) );
+         return getUsesConflicts( BundleManifestFactory.createBundleManifest( headers, new DummyParserLogger() ) );
+      }
+      catch( Exception exception ) {
+         throw new RuntimeException( "Error trying to find use conflicts for manifest headers", exception );
+      }
+   }
+
+   @Override
+   public List<UsesConflict> findUsesConflicts( Reader headers, String packageName ) {
+      try {
+         return getUsesConflicts( BundleManifestFactory.createBundleManifest( headers, new DummyParserLogger() ), packageName );
       }
       catch( Exception exception ) {
          throw new RuntimeException( "Error trying to find use conflicts for manifest headers", exception );
@@ -252,10 +267,10 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       if( match != null ) {
          result.setReason( MissingOptionalImportReasonType.RefreshRequired );
          result.setMatch( match );
-         final List<UseConflict> useConflicts = getUseConflicts( bundle, importedPackage );
-         if( !useConflicts.isEmpty() ) {
-            result.setReason( MissingOptionalImportReasonType.UseConflict );
-            result.setUseConflicts( useConflicts );
+         final List<UsesConflict> usesConflicts = getUsesConflicts( bundle, importedPackage );
+         if( !usesConflicts.isEmpty() ) {
+            result.setReason( MissingOptionalImportReasonType.UsesConflict );
+            result.setUsesConflicts( usesConflicts );
          }
       }
       else {
@@ -286,20 +301,33 @@ public class InternalOsgiAnalyzerService implements IOsgiAnalyzerService, Uncaug
       return result;
    }
 
-   private List<UseConflict> getUseConflicts( Bundle bundle ) {
-      return new FindUseConflictsTemplate( bundleContext ).find( new BundleFindUseConflictsCallback( bundle ) );
+   private List<UsesConflict> getUsesConflicts( Bundle bundle ) {
+      return new FindUsesConflictsTemplate( bundleContext ).find( new BundleFindUsesConflictsCallback( bundle ) );
    }
 
-   private List<UseConflict> getUseConflicts( Bundle bundle, ImportedPackage importedPackage ) {
-      return new FindUseConflictsTemplate( bundleContext ).find( new BundleFindUseConflictsCallback( bundle ), importedPackage );
+   private List<UsesConflict> getUsesConflicts( Bundle bundle, ImportedPackage importedPackage ) {
+      return new FindUsesConflictsTemplate( bundleContext ).find( new BundleFindUsesConflictsCallback( bundle ), importedPackage );
    }
 
-   private List<UseConflict> getUseConflicts( BundleManifest manifest ) {
-      return new FindUseConflictsTemplate( bundleContext ).find( new BundleManifestFindUseConflictsCallback( manifest ) );
+   private List<UsesConflict> getUsesConflicts( BundleManifest manifest ) {
+      return new FindUsesConflictsTemplate( bundleContext ).find( new BundleManifestFindUsesConflictsCallback( manifest ) );
    }
 
-   private boolean hasUseConflict( Bundle bundle ) {
-      return getUseConflicts( bundle ).size() > 0;
+   private List<UsesConflict> getUsesConflicts( BundleManifest manifest, ImportedPackage importedPackage ) {
+      return new FindUsesConflictsTemplate( bundleContext ).find( new BundleManifestFindUsesConflictsCallback( manifest ), importedPackage );
+   }
+
+   private List<UsesConflict> getUsesConflicts( BundleManifest manifest, String packageName ) {
+      final List<UsesConflict> result = new ArrayList<UsesConflict>();
+      final ImportedPackage importedPackage = BundleUtils.getImportedPackage( manifest, packageName );
+      if( importedPackage != null ) {
+         result.addAll( getUsesConflicts( manifest, importedPackage ) );
+      }
+      return result;
+   }
+
+   private boolean hasUsesConflict( Bundle bundle ) {
+      return getUsesConflicts( bundle ).size() > 0;
    }
 
    private boolean isRefreshRequired( Bundle bundle ) {

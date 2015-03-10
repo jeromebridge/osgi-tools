@@ -1,7 +1,7 @@
 package tools.osgi.analyzer.api;
 
 /** Enumerates all the possible suggestions to fix a Use Conflict */
-public enum UseConflictResolutionSuggestionType {
+public enum UsesConflictResolutionSuggestionType {
    Null(""),
    None("None"),
    UninstallBundle("Uninstall Bundle"),
@@ -9,7 +9,7 @@ public enum UseConflictResolutionSuggestionType {
 
    private String display;
 
-   private UseConflictResolutionSuggestionType( String display ) {
+   private UsesConflictResolutionSuggestionType( String display ) {
       this.display = display;
    }
 

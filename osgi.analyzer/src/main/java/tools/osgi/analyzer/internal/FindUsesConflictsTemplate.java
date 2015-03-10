@@ -12,7 +12,7 @@ import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
 import tools.osgi.analyzer.api.BundleUtils;
-import tools.osgi.analyzer.api.UseConflict;
+import tools.osgi.analyzer.api.UsesConflict;
 import tools.osgi.analyzer.internal.InternalOsgiAnalyzerService.BundleImportedPackage;
 
 import com.springsource.util.osgi.VersionRange;
@@ -23,11 +23,11 @@ import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 
 /** Template class that can be used to find use conflicts in an OSGi environment */
 @SuppressWarnings({ "deprecation" })
-public class FindUseConflictsTemplate {
-   public static class BundleFindUseConflictsCallback implements IFindUseConflictsCallback {
+public class FindUsesConflictsTemplate {
+   public static class BundleFindUsesConflictsCallback implements IFindUsesConflictsCallback {
       private Bundle bundle;
 
-      public BundleFindUseConflictsCallback( Bundle bundle ) {
+      public BundleFindUsesConflictsCallback( Bundle bundle ) {
          this.bundle = bundle;
       }
 
@@ -56,10 +56,10 @@ public class FindUseConflictsTemplate {
       }
    }
 
-   public static class BundleManifestFindUseConflictsCallback implements IFindUseConflictsCallback {
+   public static class BundleManifestFindUsesConflictsCallback implements IFindUsesConflictsCallback {
       private BundleManifest manifest;
 
-      public BundleManifestFindUseConflictsCallback( BundleManifest manifest ) {
+      public BundleManifestFindUsesConflictsCallback( BundleManifest manifest ) {
          this.manifest = manifest;
       }
 
@@ -79,7 +79,7 @@ public class FindUseConflictsTemplate {
       }
    }
 
-   public static interface IFindUseConflictsCallback {
+   public static interface IFindUsesConflictsCallback {
       BundleManifest getManifest();
 
       boolean shouldCheck();
@@ -94,36 +94,25 @@ public class FindUseConflictsTemplate {
 
    private BundleContext bundleContext;
 
-   public FindUseConflictsTemplate( BundleContext bundleContext ) {
+   public FindUsesConflictsTemplate( BundleContext bundleContext ) {
       this.bundleContext = bundleContext;
    }
 
-   public List<UseConflict> find( IFindUseConflictsCallback callback ) {
-      return getUseConflicts( callback );
+   public List<UsesConflict> find( IFindUsesConflictsCallback callback ) {
+      return getUsesConflicts( callback );
    }
 
-   public List<UseConflict> find( IFindUseConflictsCallback callback, ImportedPackage importedPackage ) {
-      return getUseConflicts( callback, importedPackage );
+   public List<UsesConflict> find( IFindUsesConflictsCallback callback, ImportedPackage importedPackage ) {
+      return getUsesConflicts( callback, importedPackage );
    }
 
-   private List<UseConflict> getHeaderUseConflicts( IFindUseConflictsCallback callback, Bundle useConflictBundle, ImportedPackage use ) {
-      final List<UseConflict> result = new ArrayList<UseConflict>();
+   private List<UsesConflict> getHeaderUsesConflicts( IFindUsesConflictsCallback callback, Bundle usesConflictBundle, ImportedPackage use ) {
+      final List<UsesConflict> result = new ArrayList<UsesConflict>();
       final List<ImportedPackage> importedPackages = callback.getManifest().getImportPackage().getImportedPackages();
       final ImportedPackage match = getMatchingImport( importedPackages, use );
       if( match != null ) {
          if( VersionRange.intersection( match.getVersion(), use.getVersion() ).isEmpty() ) {
-            result.add( new UseConflict( bundleContext, callback.getManifest(), match, useConflictBundle, use ) );
-         }
-      }
-      return result;
-   }
-
-   private ImportedPackage getImportedPackage( Bundle bundle, String packageName ) {
-      ImportedPackage result = null;
-      for( ImportedPackage importedPackage : BundleUtils.getImportedPackages( bundle ) ) {
-         if( importedPackage.getPackageName().equals( packageName ) ) {
-            result = importedPackage;
-            break;
+            result.add( new UsesConflict( bundleContext, callback.getManifest(), match, usesConflictBundle, use ) );
          }
       }
       return result;
@@ -138,7 +127,7 @@ public class FindUseConflictsTemplate {
       if( exportedPackage != null ) {
          for( String use : exportedPackage.getUses() ) {
             if( !exclude.contains( use ) ) {
-               final ImportedPackage importedPackage = getImportedPackage( bundle, use );
+               final ImportedPackage importedPackage = BundleUtils.getImportedPackage( bundle, use );
                if( importedPackage != null ) {
                   result.add( importedPackage );
                   exclude.add( use );
@@ -198,12 +187,12 @@ public class FindUseConflictsTemplate {
       return packageAdmin;
    }
 
-   private List<UseConflict> getUseConflicts( IFindUseConflictsCallback callback ) {
-      final List<UseConflict> result = new ArrayList<UseConflict>();
+   private List<UsesConflict> getUsesConflicts( IFindUsesConflictsCallback callback ) {
+      final List<UsesConflict> result = new ArrayList<UsesConflict>();
       if( callback.shouldCheck() ) {
          final List<ImportedPackage> importedPackages = callback.getManifest().getImportPackage().getImportedPackages();
          for( ImportedPackage importedPackage : importedPackages ) {
-            result.addAll( getUseConflicts( callback, importedPackage ) );
+            result.addAll( getUsesConflicts( callback, importedPackage ) );
          }
       }
       return result;
@@ -211,31 +200,31 @@ public class FindUseConflictsTemplate {
 
    /**
     * @param bundle Callback that provides bundle meta data to find use conflicts for
-    * @param useConflictBundleImport Bundle and Import Package down the dependency chain of the bundle being checked
+    * @param usesConflictBundleImport Bundle and Import Package down the dependency chain of the bundle being checked
     * @param alreadyChecked List of bundle/imports that have already been checked
     * @return List of use conflicts for the bundle combination
     */
-   private List<UseConflict> getUseConflicts( IFindUseConflictsCallback callback, BundleImportedPackage useConflictBundleImport, List<BundleImportedPackage> alreadyChecked ) {
-      final List<UseConflict> result = new ArrayList<UseConflict>();
-      if( useConflictBundleImport.getBundle() != null && useConflictBundleImport.getImportedPackage() != null && !alreadyChecked.contains( useConflictBundleImport ) ) {
-         alreadyChecked.add( useConflictBundleImport );
+   private List<UsesConflict> getUsesConflicts( IFindUsesConflictsCallback callback, BundleImportedPackage usesConflictBundleImport, List<BundleImportedPackage> alreadyChecked ) {
+      final List<UsesConflict> result = new ArrayList<UsesConflict>();
+      if( usesConflictBundleImport.getBundle() != null && usesConflictBundleImport.getImportedPackage() != null && !alreadyChecked.contains( usesConflictBundleImport ) ) {
+         alreadyChecked.add( usesConflictBundleImport );
 
-         final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = BundleUtils.getExportedPackage( useConflictBundleImport.getBundle(), useConflictBundleImport.getImportedPackage() );
-         final List<ImportedPackage> uses = getImportedPackagesForExportUses( useConflictBundleImport.getBundle(), exportedPackage );
+         final com.springsource.util.osgi.manifest.ExportedPackage exportedPackage = BundleUtils.getExportedPackage( usesConflictBundleImport.getBundle(), usesConflictBundleImport.getImportedPackage() );
+         final List<ImportedPackage> uses = getImportedPackagesForExportUses( usesConflictBundleImport.getBundle(), exportedPackage );
          for( ImportedPackage use : uses ) {
-            result.addAll( getHeaderUseConflicts( callback, useConflictBundleImport.getBundle(), use ) );
-            result.addAll( getWiringUseConflicts( callback, useConflictBundleImport.getBundle(), use ) );
+            result.addAll( getHeaderUsesConflicts( callback, usesConflictBundleImport.getBundle(), use ) );
+            result.addAll( getWiringUsesConflicts( callback, usesConflictBundleImport.getBundle(), use ) );
          }
 
          // Secondary Dependencies
-         final BundleWiring wiring = useConflictBundleImport.getBundle().adapt( BundleWiring.class );
+         final BundleWiring wiring = usesConflictBundleImport.getBundle().adapt( BundleWiring.class );
          if( wiring != null ) {
             for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
                if( required.getProviderWiring() != null ) {
-                  final Bundle secondaryUseConflictBundle = required.getProviderWiring().getBundle();
-                  final ImportedPackage secondaryImportedPackage = getImportedPackageForBundleWire( useConflictBundleImport.getBundle(), required );
-                  final BundleImportedPackage secondaryBundleImport = new BundleImportedPackage( secondaryUseConflictBundle, secondaryImportedPackage );
-                  result.addAll( getUseConflicts( callback, secondaryBundleImport, alreadyChecked ) );
+                  final Bundle secondaryUsesConflictBundle = required.getProviderWiring().getBundle();
+                  final ImportedPackage secondaryImportedPackage = getImportedPackageForBundleWire( usesConflictBundleImport.getBundle(), required );
+                  final BundleImportedPackage secondaryBundleImport = new BundleImportedPackage( secondaryUsesConflictBundle, secondaryImportedPackage );
+                  result.addAll( getUsesConflicts( callback, secondaryBundleImport, alreadyChecked ) );
                }
             }
          }
@@ -248,50 +237,50 @@ public class FindUseConflictsTemplate {
     * @param importedPackage Import Package from the bundle to check for conflicts down the dependency tree
     * @return List of all Use Conflicts found recursively
     */
-   private List<UseConflict> getUseConflicts( IFindUseConflictsCallback callback, ImportedPackage importedPackage ) {
-      final List<UseConflict> result = new ArrayList<UseConflict>();
+   private List<UsesConflict> getUsesConflicts( IFindUsesConflictsCallback callback, ImportedPackage importedPackage ) {
+      final List<UsesConflict> result = new ArrayList<UsesConflict>();
       final Bundle match = BundleUtils.findBestMatchThatSatisfiesImport( bundleContext, importedPackage );
       if( match != null ) {
-         result.addAll( getUseConflicts( callback, new BundleImportedPackage( match, importedPackage ), new ArrayList<BundleImportedPackage>() ) );
+         result.addAll( getUsesConflicts( callback, new BundleImportedPackage( match, importedPackage ), new ArrayList<BundleImportedPackage>() ) );
       }
       return result;
    }
 
-   private List<UseConflict> getWiringUseConflicts( IFindUseConflictsCallback callback, Bundle useConflictBundle, ImportedPackage use ) {
-      return getWiringUseConflicts( callback, useConflictBundle, use, new ArrayList<Bundle>() );
+   private List<UsesConflict> getWiringUsesConflicts( IFindUsesConflictsCallback callback, Bundle usesConflictBundle, ImportedPackage use ) {
+      return getWiringUsesConflicts( callback, usesConflictBundle, use, new ArrayList<Bundle>() );
    }
 
    /**
     * @param bundle Callback that provides bundle meta data to find use conflicts for
-    * @param useConflictBundle Bundle that satisfies an import of the bundle that will not start
+    * @param usesConflictBundle Bundle that satisfies an import of the bundle that will not start
     * @param use Use Import that could be causing the use conflict
     * @param alreadyChecked List of bundles that have already been checked
     * @return All Use Conflicts found with the wiring of the potential use conflict bundle
     */
-   private List<UseConflict> getWiringUseConflicts( IFindUseConflictsCallback callback, Bundle useConflictBundle, ImportedPackage use, List<Bundle> alreadyChecked ) {
-      final List<UseConflict> result = new ArrayList<UseConflict>();
-      if( !alreadyChecked.contains( useConflictBundle ) ) {
-         alreadyChecked.add( useConflictBundle );
+   private List<UsesConflict> getWiringUsesConflicts( IFindUsesConflictsCallback callback, Bundle usesConflictBundle, ImportedPackage use, List<Bundle> alreadyChecked ) {
+      final List<UsesConflict> result = new ArrayList<UsesConflict>();
+      if( !alreadyChecked.contains( usesConflictBundle ) ) {
+         alreadyChecked.add( usesConflictBundle );
          final List<ImportedPackage> importedPackages = callback.getManifest().getImportPackage().getImportedPackages();
          final ImportedPackage match = getMatchingImport( importedPackages, use );
          if( match != null ) {
             final PackageAdmin packageAdmin = getPackageAdmin();
-            if( packageAdmin.resolveBundles( new Bundle[]{ useConflictBundle } ) ) {
-               if( !BundleUtils.isImportedPackageResolved( bundleContext, useConflictBundle, use ) ) {
+            if( packageAdmin.resolveBundles( new Bundle[]{ usesConflictBundle } ) ) {
+               if( !BundleUtils.isImportedPackageResolved( bundleContext, usesConflictBundle, use ) ) {
                   // ADD CONFLICT IF OPTIONAL PACKAGE NOT RESOLVED?
                }
-               final BundleWire useConflictWire = BundleUtils.getBundleWire( bundleContext, useConflictBundle, use.getPackageName() );
-               if( useConflictWire != null ) {
-                  if( !BundleUtils.containsExportForImport( useConflictWire.getProviderWiring().getBundle(), match ) ) {
-                     final com.springsource.util.osgi.manifest.ExportedPackage useConflictExportPackage = getExportedPackage( useConflictWire.getProviderWiring().getBundle(), match.getPackageName() );
-                     result.add( new UseConflict( bundleContext, callback.getManifest(), match, useConflictBundle, useConflictExportPackage ) );
+               final BundleWire usesConflictWire = BundleUtils.getBundleWire( bundleContext, usesConflictBundle, use.getPackageName() );
+               if( usesConflictWire != null ) {
+                  if( !BundleUtils.containsExportForImport( usesConflictWire.getProviderWiring().getBundle(), match ) ) {
+                     final com.springsource.util.osgi.manifest.ExportedPackage usesConflictExportPackage = getExportedPackage( usesConflictWire.getProviderWiring().getBundle(), match.getPackageName() );
+                     result.add( new UsesConflict( bundleContext, callback.getManifest(), match, usesConflictBundle, usesConflictExportPackage ) );
                   }
                   else {
                      final BundleWire wiring = callback.getBundleWire( match.getPackageName() );
                      if( wiring != null ) {
-                        if( !wiring.getProviderWiring().getBundle().equals( useConflictWire.getProviderWiring().getBundle() ) ) {
-                           final com.springsource.util.osgi.manifest.ExportedPackage useConflictExportPackage = getExportedPackage( useConflictWire.getProviderWiring().getBundle(), match.getPackageName() );
-                           result.add( new UseConflict( bundleContext, callback.getManifest(), match, useConflictBundle, useConflictExportPackage ) );
+                        if( !wiring.getProviderWiring().getBundle().equals( usesConflictWire.getProviderWiring().getBundle() ) ) {
+                           final com.springsource.util.osgi.manifest.ExportedPackage usesConflictExportPackage = getExportedPackage( usesConflictWire.getProviderWiring().getBundle(), match.getPackageName() );
+                           result.add( new UsesConflict( bundleContext, callback.getManifest(), match, usesConflictBundle, usesConflictExportPackage ) );
                         }
                      }
                   }
@@ -299,12 +288,12 @@ public class FindUseConflictsTemplate {
             }
          }
          else {
-            final BundleWiring wiring = useConflictBundle.adapt( BundleWiring.class );
+            final BundleWiring wiring = usesConflictBundle.adapt( BundleWiring.class );
             if( wiring != null ) {
                for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
                   if( required.getProviderWiring() != null ) {
-                     final Bundle secondaryUseConflictBundle = required.getProviderWiring().getBundle();
-                     result.addAll( getWiringUseConflicts( callback, secondaryUseConflictBundle, use, alreadyChecked ) );
+                     final Bundle secondaryUsesConflictBundle = required.getProviderWiring().getBundle();
+                     result.addAll( getWiringUsesConflicts( callback, secondaryUsesConflictBundle, use, alreadyChecked ) );
                   }
                }
             }

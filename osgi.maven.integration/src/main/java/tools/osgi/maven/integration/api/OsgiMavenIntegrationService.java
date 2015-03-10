@@ -49,7 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
-import tools.osgi.analyzer.api.UseConflict;
+import tools.osgi.analyzer.api.UsesConflict;
 import tools.osgi.maven.integration.internal.Duration;
 import tools.osgi.maven.integration.internal.FileUtils;
 import tools.osgi.maven.integration.internal.MavenProjectHolder;
@@ -62,6 +62,7 @@ import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.M
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.MavenUtils;
 import tools.osgi.maven.integration.internal.ObrUtils;
+import tools.osgi.maven.integration.internal.UsesConflictError;
 import tools.osgi.maven.integration.internal.aether.Booter;
 
 import com.springsource.util.osgi.manifest.Resolution;
@@ -115,7 +116,7 @@ public class OsgiMavenIntegrationService {
          @Descriptor("Refresh Use Conflict bundles") @Parameter(
                names = { "-ru", "--refresh-use-conflicts" },
                presentValue = "true",
-               absentValue = "false") boolean refreshUseConflicts,
+               absentValue = "false") boolean refreshUsesConflicts,
          @Descriptor("Dependencies Only") @Parameter(
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
@@ -134,7 +135,7 @@ public class OsgiMavenIntegrationService {
                absentValue = "false") boolean diagnose,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, reinstall, refreshUseConflicts, dependenciesOnly, showOptionalImports, force, diagnose, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, refreshUsesConflicts, dependenciesOnly, showOptionalImports, force, diagnose, workspacePath, null );
    }
 
    @Descriptor("Deploys all the subfolders of the specified directory if they are compiled Maven projects that are also bundles.")
@@ -154,7 +155,7 @@ public class OsgiMavenIntegrationService {
          @Descriptor("Refresh Use Conflict bundles") @Parameter(
                names = { "-ru", "--refresh-use-conflicts" },
                presentValue = "true",
-               absentValue = "false") boolean refreshUseConflicts,
+               absentValue = "false") boolean refreshUsesConflicts,
          @Descriptor("Dependencies Only") @Parameter(
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
@@ -294,9 +295,9 @@ public class OsgiMavenIntegrationService {
                bundle.start();
             }
             catch( Exception exception ) {
-               if( refreshUseConflicts && isUseConflict( bundle ) ) {
+               if( refreshUsesConflicts && isUsesConflict( bundle ) ) {
                   try {
-                     refreshBundleWithUseConflicts( bundle );
+                     refreshBundleWithUsesConflicts( bundle );
                      bundle.start();
                   }
                   catch( Exception exception2 ) {
@@ -324,10 +325,19 @@ public class OsgiMavenIntegrationService {
    private void diagnoseInstallFailure( AbstractBundleDeploymentPlan plan, Exception exception ) {
       try {
          System.out.println( "Diagnosing Install Exception..." );
-         final List<UseConflict> conflicts = getOsgiAnalyzerService().findUseConflicts( plan.getManifest().toDictionary() );
+         final List<UsesConflictError> conflictsFromMessage = parseUsesConflicts( exception );
+         final List<UsesConflict> conflicts = new ArrayList<UsesConflict>();
+         if( conflictsFromMessage.isEmpty() ) {
+            conflicts.addAll( getOsgiAnalyzerService().findUsesConflicts( plan.getManifest().toDictionary() ) );
+         }
+         else {
+            for( UsesConflictError error : conflictsFromMessage ) {
+               conflicts.addAll( getOsgiAnalyzerService().findUsesConflicts( plan.getManifest().toDictionary(), error.getImportPackageName() ) );
+            }
+         }
          if( !conflicts.isEmpty() ) {
             System.out.println( "Uses Conflicts Found:" );
-            for( UseConflict conflict : conflicts ) {
+            for( UsesConflict conflict : conflicts ) {
                System.out.println( "   " + conflict );
             }
          }
@@ -338,6 +348,28 @@ public class OsgiMavenIntegrationService {
       catch( Throwable exception2 ) {
          LOG.error( "Failed to diagnose install failure", exception2 );
       }
+   }
+
+   private List<UsesConflictError> parseUsesConflicts( Exception exception ) {
+      final String message = ExceptionUtils.getRootCauseMessage( exception );
+      final List<UsesConflictError> result = new ArrayList<UsesConflictError>();
+      final String[] array = message.split( "Uses violation:" );
+      for( int index = 1; index < array.length; index += 2 ) {
+         final String sub = array[index];
+         final String searchText = "<Import-Package:";
+         final int startIndex = sub.indexOf( searchText ) + searchText.length();
+         final int endIndex = sub.indexOf( ";" );
+         final String packageName = sub.substring( startIndex, endIndex ).trim();
+         final int startIndex2 = sub.indexOf( "\"" ) + 1;
+         final int endIndex2 = sub.indexOf( "\"", startIndex2 );
+         final String version = sub.substring( startIndex2, endIndex2 ).trim();
+         final String searchText2 = "bundle <";
+         final int startIndex3 = sub.indexOf( searchText2 ) + searchText2.length();
+         final int endIndex3 = sub.indexOf( "_", startIndex3 );
+         final String bundleSymbolicName = sub.substring( startIndex3, endIndex3 ).trim();
+         result.add( new UsesConflictError( packageName, version, bundleSymbolicName ) );
+      }
+      return result;
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
@@ -686,8 +718,8 @@ public class OsgiMavenIntegrationService {
       return ObrUtils.isOsgiBundle( classesFolder );
    }
 
-   private boolean isUseConflict( Bundle bundle ) {
-      return !getOsgiAnalyzerService().findUseConflicts( bundle ).isEmpty();
+   private boolean isUsesConflict( Bundle bundle ) {
+      return !getOsgiAnalyzerService().findUsesConflicts( bundle ).isEmpty();
    }
 
    private boolean isVirgoEnvironment() {
@@ -804,11 +836,11 @@ public class OsgiMavenIntegrationService {
       }
    }
 
-   private void refreshBundleWithUseConflicts( Bundle bundle ) {
+   private void refreshBundleWithUsesConflicts( Bundle bundle ) {
       final Set<Bundle> bundles = new HashSet<Bundle>();
       bundles.add( bundle );
-      for( UseConflict useConflict : getOsgiAnalyzerService().findUseConflicts( bundle ) ) {
-         bundles.add( useConflict.getUseConflictBundle() );
+      for( UsesConflict usesConflict : getOsgiAnalyzerService().findUsesConflicts( bundle ) ) {
+         bundles.add( usesConflict.getUsesConflictBundle() );
       }
       final Bundle[] refreshBundles = new Bundle[bundles.size()];
       bundles.toArray( refreshBundles );

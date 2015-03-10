@@ -11,7 +11,7 @@ public enum MissingOptionalImportReasonType {
    /** No bundles are available to resolve the import */
    Unavailable("Unavailable", false),
    /** Import could be resolved but would result in a use conflict */
-   UseConflict("Use Conflict", true), ;
+   UsesConflict("Uses Conflict", true), ;
 
    private MissingOptionalImportReasonType( String display ) {
       this.display = display;

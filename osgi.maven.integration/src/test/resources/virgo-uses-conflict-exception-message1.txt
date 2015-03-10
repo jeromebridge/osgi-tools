@@ -1,0 +1,3 @@
+ Resolver report:
+        Uses violation: <Import-Package: org.restlet.ext.jaxrs; version="0.0.0"> in bundle <com.yaas.web.yaas-ws_1.0.0.M1[1426013194125]>
+             Resolver reported uses conflict for import

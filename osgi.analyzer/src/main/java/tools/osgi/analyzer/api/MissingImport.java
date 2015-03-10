@@ -11,7 +11,7 @@ import com.springsource.util.osgi.manifest.ImportedPackage;
 public class MissingImport {
    private ImportedPackage importedPackage;
    private MissingOptionalImportReasonType reason = MissingOptionalImportReasonType.Null;
-   private List<UseConflict> useConflicts = new ArrayList<UseConflict>();
+   private List<UsesConflict> usesConflicts = new ArrayList<UsesConflict>();
    private Bundle match;
 
    public Bundle getMatch() {
@@ -22,12 +22,12 @@ public class MissingImport {
       this.match = match;
    }
 
-   public List<UseConflict> getUseConflicts() {
-      return useConflicts;
+   public List<UsesConflict> getUsesConflicts() {
+      return usesConflicts;
    }
 
-   public void setUseConflicts( List<UseConflict> useConflicts ) {
-      this.useConflicts = useConflicts;
+   public void setUsesConflicts( List<UsesConflict> usesConflicts ) {
+      this.usesConflicts = usesConflicts;
    }
 
    public MissingOptionalImportReasonType getReason() {

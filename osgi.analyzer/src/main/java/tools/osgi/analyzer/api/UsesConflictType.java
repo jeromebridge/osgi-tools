@@ -1,5 +1,5 @@
 package tools.osgi.analyzer.api;
 
-public enum UseConflictType {
+public enum UsesConflictType {
    Header, Wiring, Null;
 }

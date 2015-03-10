@@ -8,12 +8,12 @@ import org.osgi.framework.Bundle;
 
 public interface IOsgiAnalyzerService {
 
-   List<Bundle> findBundlesWithUseConflicts();
+   List<Bundle> findBundlesWithUsesConflicts();
 
-   List<UseConflict> findUseConflicts( Bundle bundle );
+   List<UsesConflict> findUsesConflicts( Bundle bundle );
 
-   /** @see IOsgiAnalyzerService#findUseConflicts(Dictionary) */
-   List<UseConflict> findUseConflicts( Reader headers );
+   /** @see IOsgiAnalyzerService#findUsesConflicts(Dictionary) */
+   List<UsesConflict> findUsesConflicts( Reader headers );
 
    /**
     * Calculates use conflicts in the current OSGi environment based on the
@@ -22,7 +22,20 @@ public interface IOsgiAnalyzerService {
     * current environment
     * @return All Use Conflicts found for the specified headers
     */
-   List<UseConflict> findUseConflicts( Dictionary<String, String> headers );
+   List<UsesConflict> findUsesConflicts( Dictionary<String, String> headers );
+
+   /** @see IOsgiAnalyzerService#findUsesConflicts(Dictionary, String) */
+   List<UsesConflict> findUsesConflicts( Reader headers, String packageName );
+
+   /**
+    * Calculates use conflicts in the current OSGi environment based on the
+    * manifest headers passed in
+    * @param headers Manifest headers to find potential use conflicts in the
+    * current environment
+    * @param packageName Limit search for use conflicts to this package only
+    * @return All Use Conflicts found for the specified headers
+    */
+   List<UsesConflict> findUsesConflicts( Dictionary<String, String> headers, String packageName );
 
    List<Bundle> findBundlesWithMissingOptionalImports();
 
