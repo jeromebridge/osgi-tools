@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.felix.bundlerepository.Repository;
 import org.apache.felix.bundlerepository.RepositoryAdmin;
 import org.apache.felix.bundlerepository.Resource;
@@ -258,7 +259,7 @@ public class OsgiMavenIntegrationService {
                      }
                   }
                   catch( Exception exception ) {
-                     System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );
+                     System.out.println( String.format( "Failed to install: %s Reason: %s", plan , ExceptionUtils.getRootCauseMessage( exception ) ) );
                      diagnoseInstallFailure( plan, exception );
                      throw new RuntimeException( "Failed to install: " + plan, exception );
                   }
