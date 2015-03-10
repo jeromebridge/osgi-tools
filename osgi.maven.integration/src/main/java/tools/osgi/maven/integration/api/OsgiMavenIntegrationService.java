@@ -311,9 +311,13 @@ public class OsgiMavenIntegrationService {
    }
 
    private void diagnoseInstallFailure( AbstractBundleDeploymentPlan plan, Exception exception ) {
-      // TODO Check for possible use conflicts
-      final List<UseConflict> conflicts = getOsgiAnalyzerService().findUseConflicts( plan.getManifest().toDictionary() );
-      System.out.println( conflicts );
+      try {
+         final List<UseConflict> conflicts = getOsgiAnalyzerService().findUseConflicts( plan.getManifest().toDictionary() );
+         System.out.println( conflicts );
+      }
+      catch( Throwable exception2 ) {
+         LOG.error( "Failed to diagnose install failure", exception2 );
+      }
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
