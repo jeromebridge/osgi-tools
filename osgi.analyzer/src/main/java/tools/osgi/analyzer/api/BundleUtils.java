@@ -1,6 +1,7 @@
 package tools.osgi.analyzer.api;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.osgi.framework.Bundle;
@@ -15,10 +16,53 @@ import com.springsource.util.osgi.manifest.BundleManifest;
 import com.springsource.util.osgi.manifest.BundleManifestFactory;
 import com.springsource.util.osgi.manifest.ExportedPackage;
 import com.springsource.util.osgi.manifest.ImportedPackage;
+import com.springsource.util.osgi.manifest.Resolution;
 import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 
 @SuppressWarnings("deprecation")
 public class BundleUtils {
+
+   public static Bundle getBundleByNameOrId( BundleContext bundleContext, String bundleId ) {
+      Bundle result = null;
+      if( isLong( bundleId ) ) {
+         result = bundleContext.getBundle( Long.valueOf( bundleId ) );
+      }
+      else {
+         for( Bundle bundle : bundleContext.getBundles() ) {
+            if( bundle.getSymbolicName().equals( bundleId ) ) {
+               result = bundle;
+               break;
+            }
+         }
+      }
+      return result;
+   }
+
+   public static boolean isBundleResolved( Bundle bundle ) {
+      return Bundle.RESOLVED == bundle.getState() || Bundle.ACTIVE == bundle.getState();
+   }
+
+   public static boolean isImportedPackageResolved( BundleContext bundleContext, Bundle bundle, ImportedPackage importedPackage ) {
+      boolean result = false;
+      if( isBundleResolved( bundle ) ) {
+         result = BundleUtils.getBundleWire( bundleContext, bundle, importedPackage.getPackageName() ) != null;
+      }
+      else {
+         result = BundleUtils.findBestMatchThatSatisfiesImport( bundleContext, importedPackage ) != null;
+      }
+      return result;
+   }
+
+   private static boolean isLong( String value ) {
+      boolean result = true;
+      try {
+         Long.parseLong( value );
+      }
+      catch( Throwable exception ) {
+         result = false;
+      }
+      return result;
+   }
 
    /**
     * Finds the {@link BundleWire} on the specified bundle for the package name
@@ -70,6 +114,41 @@ public class BundleUtils {
             }
          }
       }
+      return result;
+   }
+
+   public static boolean containsExportForImport( Bundle bundle, ImportedPackage importedPackage ) {
+      return getExportedPackage( bundle, importedPackage ) != null;
+   }
+
+   public static List<ImportedPackage> getImportedPackages( Bundle bundle ) {
+      return getImportedPackages( bundle, null );
+   }
+
+   public static List<ImportedPackage> getImportedPackages( Bundle bundle, Resolution resolution ) {
+      final List<ImportedPackage> result = new ArrayList<ImportedPackage>();
+      final BundleManifest manifest = BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
+      for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
+         if( resolution == null || resolution.equals( importedPackage.getResolution() ) ) {
+            result.add( importedPackage );
+         }
+      }
+      return result;
+   }
+
+   public static Bundle findBestMatchThatSatisfiesImport( BundleContext bundleContext, ImportedPackage importedPackage ) {
+      final List<Bundle> matches = findBundlesThatSatisfyImport( bundleContext, importedPackage );
+      return matches.isEmpty() ? null : matches.get( 0 );
+   }
+
+   public static List<Bundle> findBundlesThatSatisfyImport( BundleContext bundleContext, ImportedPackage importedPackage ) {
+      final List<Bundle> result = new ArrayList<Bundle>();
+      for( Bundle bundle : bundleContext.getBundles() ) {
+         if( containsExportForImport( bundle, importedPackage ) ) {
+            result.add( bundle );
+         }
+      }
+      Collections.sort( result );
       return result;
    }
 

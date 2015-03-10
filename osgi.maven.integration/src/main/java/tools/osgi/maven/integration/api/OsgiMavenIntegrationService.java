@@ -259,6 +259,7 @@ public class OsgiMavenIntegrationService {
                   }
                   catch( Exception exception ) {
                      System.out.println( "Failed to install: " + plan + " Reason: " + exception.getMessage() );
+                     diagnoseInstallFailure( plan, exception );
                      throw new RuntimeException( "Failed to install: " + plan, exception );
                   }
 
@@ -307,6 +308,12 @@ public class OsgiMavenIntegrationService {
       catch( Throwable exception ) {
          exception.printStackTrace();
       }
+   }
+
+   private void diagnoseInstallFailure( AbstractBundleDeploymentPlan plan, Exception exception ) {
+      // TODO Check for possible use conflicts
+      final List<UseConflict> conflicts = getOsgiAnalyzerService().findUseConflicts( plan.getManifest().toDictionary() );
+      System.out.println( conflicts );
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {

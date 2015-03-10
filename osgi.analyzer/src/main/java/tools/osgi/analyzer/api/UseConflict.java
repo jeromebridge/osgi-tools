@@ -4,11 +4,12 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleWire;
 
+import com.springsource.util.osgi.manifest.BundleManifest;
 import com.springsource.util.osgi.manifest.ExportedPackage;
 import com.springsource.util.osgi.manifest.ImportedPackage;
 
 public class UseConflict {
-   private Bundle bundle;
+   private BundleManifest manifest;
    private BundleContext bundleContext;
    private ImportedPackage importedPackage;
    private UseConflictType type = UseConflictType.Null;
@@ -18,18 +19,18 @@ public class UseConflict {
 
    public UseConflict() {}
 
-   public UseConflict( BundleContext bundleContext, Bundle bundle, ImportedPackage importedPackage, Bundle useConflictBundle, ExportedPackage useConflictExportedPackage ) {
+   public UseConflict( BundleContext bundleContext, BundleManifest manifest, ImportedPackage importedPackage, Bundle useConflictBundle, ExportedPackage useConflictExportedPackage ) {
       this.bundleContext = bundleContext;
-      setBundle( bundle );
+      setManifest( manifest );
       setImportedPackage( importedPackage );
       setUseConflictBundle( useConflictBundle );
       setUseConflictExportedPackage( useConflictExportedPackage );
       setType( UseConflictType.Wiring );
    }
 
-   public UseConflict( BundleContext bundleContext, Bundle bundle, ImportedPackage importedPackage, Bundle useConflictBundle, ImportedPackage useConflictExportedPackage ) {
+   public UseConflict( BundleContext bundleContext, BundleManifest manifest, ImportedPackage importedPackage, Bundle useConflictBundle, ImportedPackage useConflictExportedPackage ) {
       this.bundleContext = bundleContext;
-      setBundle( bundle );
+      setManifest( manifest );
       setImportedPackage( importedPackage );
       setUseConflictBundle( useConflictBundle );
       setUseConflictImportedPackage( useConflictExportedPackage );
@@ -37,11 +38,14 @@ public class UseConflict {
    }
 
    public Bundle getBundle() {
-      return bundle;
+      return BundleUtils.getBundleByNameOrId( bundleContext, getManifest().getBundleSymbolicName().getSymbolicName() );
    }
 
    public BundleWire getBundleWire() {
-      return BundleUtils.getBundleWire( bundleContext, bundle, importedPackage.getPackageName() );
+      if( getBundle() == null ) {
+         throw new RuntimeException( "No bundle can be found for the Use Conflict definition" );
+      }
+      return BundleUtils.getBundleWire( bundleContext, getBundle(), importedPackage.getPackageName() );
    }
 
    public Bundle getBundleWireBundle() {
@@ -108,8 +112,12 @@ public class UseConflict {
       return useConflictImportedPackage;
    }
 
-   public void setBundle( Bundle bundle ) {
-      this.bundle = bundle;
+   public BundleManifest getManifest() {
+      return manifest;
+   }
+
+   public void setManifest( BundleManifest manifest ) {
+      this.manifest = manifest;
    }
 
    public void setImportedPackage( ImportedPackage importedPackage ) {

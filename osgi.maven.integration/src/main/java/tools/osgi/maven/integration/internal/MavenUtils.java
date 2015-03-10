@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
@@ -81,6 +82,17 @@ public class MavenUtils {
       }
       catch( Exception exception ) {
          throw new RuntimeException( String.format( "Failed getting manifest for Maven Project: %s", project.getArtifactId() ) );
+      }
+   }
+
+   public static Reader getManifestHeadersAsReader( MavenProject project ) {
+      try {
+         final File manifestFile = getManifestFile( project );
+         Validate.isTrue( manifestFile.exists(), "No manifest could be found for Maven Project: %s", project.getArtifactId() );
+         return new FileReader( manifestFile );
+      }
+      catch( Exception exception ) {
+         throw new RuntimeException( String.format( "Failed getting manifest reader for Maven Project: %s", project.getArtifactId() ) );
       }
    }
 

@@ -67,7 +67,7 @@ public class OsgiAnalyzerCommandService {
          ) {
       try {
          // Get Bundle
-         final Bundle bundle = getBundleByNameOrId( bundleId );
+         final Bundle bundle = BundleUtils.getBundleByNameOrId( bundleContext, bundleId );
          if( bundle == null ) {
             throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
          }
@@ -178,7 +178,7 @@ public class OsgiAnalyzerCommandService {
          @Descriptor("Bundle ID to diagnose issues") String bundleId
          ) {
       try {
-         final Bundle bundle = getBundleByNameOrId( bundleId );
+         final Bundle bundle = BundleUtils.getBundleByNameOrId( bundleContext, bundleId );
          if( bundle == null ) {
             throw new IllegalArgumentException( String.format( "No bundle could be found for %s", bundleId ) );
          }
@@ -226,22 +226,6 @@ public class OsgiAnalyzerCommandService {
       return result;
    }
 
-   private Bundle getBundleByNameOrId( String bundleId ) {
-      Bundle result = null;
-      if( isLong( bundleId ) ) {
-         result = bundleContext.getBundle( Long.valueOf( bundleId ) );
-      }
-      else {
-         for( Bundle bundle : bundleContext.getBundles() ) {
-            if( bundle.getSymbolicName().equals( bundleId ) ) {
-               result = bundle;
-               break;
-            }
-         }
-      }
-      return result;
-   }
-
    private MBeanServer getMBeanServer() {
       final ServiceTracker<MBeanServer, Object> packageAdminTracker = new ServiceTracker<MBeanServer, Object>( bundleContext, MBeanServer.class.getName(), null );
       packageAdminTracker.open();
@@ -253,17 +237,6 @@ public class OsgiAnalyzerCommandService {
       final ServiceTracker<IOsgiAnalyzerService, Object> tracker = new ServiceTracker<IOsgiAnalyzerService, Object>( bundleContext, IOsgiAnalyzerService.class.getName(), null );
       tracker.open();
       final IOsgiAnalyzerService result = ( IOsgiAnalyzerService )tracker.getService();
-      return result;
-   }
-
-   private boolean isLong( String value ) {
-      boolean result = true;
-      try {
-         Long.parseLong( value );
-      }
-      catch( Throwable exception ) {
-         result = false;
-      }
       return result;
    }
 
