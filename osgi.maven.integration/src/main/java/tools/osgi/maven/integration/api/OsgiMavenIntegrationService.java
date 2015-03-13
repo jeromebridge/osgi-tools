@@ -121,6 +121,10 @@ public class OsgiMavenIntegrationService {
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
                absentValue = "false") boolean dependenciesOnly,
+         @Descriptor("Include Dependencies In Deploy Plan") @Parameter(
+               names = { "-id", "--include-dependencies" },
+               presentValue = "true",
+               absentValue = "false") boolean includeDependencies,
          @Descriptor("Show Optional Imports (Unresolved)") @Parameter(
                names = { "-oi", "--show-optional-imports" },
                presentValue = "true",
@@ -135,7 +139,7 @@ public class OsgiMavenIntegrationService {
                absentValue = "false") boolean diagnose,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, reinstall, refreshUsesConflicts, dependenciesOnly, showOptionalImports, force, diagnose, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, refreshUsesConflicts, dependenciesOnly, includeDependencies, showOptionalImports, force, diagnose, workspacePath, null );
    }
 
    @Descriptor("Deploys all the subfolders of the specified directory if they are compiled Maven projects that are also bundles.")
@@ -160,6 +164,10 @@ public class OsgiMavenIntegrationService {
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
                absentValue = "false") boolean dependenciesOnly,
+         @Descriptor("Include Dependencies In Deploy Plan") @Parameter(
+               names = { "-id", "--include-dependencies" },
+               presentValue = "true",
+               absentValue = "false") boolean includeDependencies,
          @Descriptor("Show Optional Imports (Unresolved)") @Parameter(
                names = { "-oi", "--show-optional-imports" },
                presentValue = "true",
@@ -205,7 +213,7 @@ public class OsgiMavenIntegrationService {
          final List<MavenProjectHolder> mavenProjects = getMavenProjects( workspaceFolder, projectFilter );
 
          // Deployment Plan
-         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects, deployedMavenProjects );
+         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects, deployedMavenProjects, includeDependencies );
          printDeploymentPlan( deploymentPlan, showOptionalImports, verbose );
 
          // Plan Only

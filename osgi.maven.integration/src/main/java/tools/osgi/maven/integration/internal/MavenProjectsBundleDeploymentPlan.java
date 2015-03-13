@@ -422,15 +422,21 @@ public class MavenProjectsBundleDeploymentPlan {
    private List<MavenProjectHolder> mavenProjects = new ArrayList<MavenProjectHolder>();
    private List<MavenProjectBundleDeploymentPlan> projectPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan>();
    private Map<MavenProjectHolder, List<Artifact>> resolvedMavenDependencies = new HashMap<MavenProjectHolder, List<Artifact>>();
+   private boolean includeDependencies = false;
 
    public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects ) {
-      this( bundleContext, mavenProjects, new ArrayList<DeployedMavenProject>() );
+      this( bundleContext, mavenProjects, new ArrayList<DeployedMavenProject>(), false );
    }
 
-   public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects, List<DeployedMavenProject> deployedMavenProjects ) {
+   public boolean isIncludeDependencies() {
+      return includeDependencies;
+   }
+
+   public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects, List<DeployedMavenProject> deployedMavenProjects, boolean includeDependencies ) {
       this.bundleContext = bundleContext;
       this.mavenProjects = new ArrayList<MavenProjectHolder>( mavenProjects );
       this.deployedMavenProjects = new ArrayList<DeployedMavenProject>( deployedMavenProjects );
+      this.includeDependencies = includeDependencies;
       init();
    }
 
@@ -726,7 +732,9 @@ public class MavenProjectsBundleDeploymentPlan {
    private void initDependencyPlans() {
       final Date startTime = new Date();
       dependencyPlans.clear();
-      addMavenDependencyPlans( getMavenDependenciesFromProjectPlans() );
+      if( includeDependencies ) {
+         addMavenDependencyPlans( getMavenDependenciesFromProjectPlans() );
+      }
       initDependencyPlansDuration = new Duration( startTime, new Date() );
    }
 
@@ -769,7 +777,7 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private List<BundleImportRequirement> resolveBundleImportRequirements( BundleManifest manifest ) {
-      resolveAllMavenDependencies();
+      // resolveAllMavenDependencies();
       final List<BundleImportRequirement> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
       for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
          final BundleImportRequirement requirement = new BundleImportRequirement( importedPackage );
@@ -791,7 +799,7 @@ public class MavenProjectsBundleDeploymentPlan {
          }
 
          // Maven Dependency
-         if( !requirement.isResolved() ) {
+         if( includeDependencies && !requirement.isResolved() ) {
             final Artifact existing = findBestMatchMavenDependencyThatSatisfiesImport( importedPackage );
             if( existing != null ) {
                requirement.setMavenDependency( existing );
