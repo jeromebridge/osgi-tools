@@ -11,7 +11,7 @@
         <repository>
             <name>Internal Nexus Repository</name>
             <id>internal-nexus-repository</id>
-            <url>http://repo.pennassurancesoftware.com/repository/public</url>
+            <url>http://repo.pennassurancesoftware.com/artifactory/public</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
@@ -22,7 +22,7 @@
         <repository>
             <name>Internal Nexus Snapshot Repository</name>
             <id>internal-nexus-snapshot-repository</id>
-            <url>http://repo.pennassurancesoftware.com/repository/public-snapshots</url>
+            <url>http://repo.pennassurancesoftware.com/artifactory/public-snapshots</url>
             <releases>
                 <enabled>false</enabled>
             </releases>
@@ -36,13 +36,13 @@
         <repository>
             <id>internal-nexus-release-repository</id>
             <name>Internal Nexus Release Repository</name>
-            <url>http://repo.pennassurancesoftware.com/repository/internal/</url>
+            <url>http://repo.pennassurancesoftware.com/artifactory/libs-release-local/</url>
             <uniqueVersion>false</uniqueVersion>
         </repository>
         <snapshotRepository>
             <id>internal-nexus-snapshot-repository</id>
             <name>Internal Nexus Snapshot Repository</name>
-            <url>http://repo.pennassurancesoftware.com/repository/snapshots/</url>
+            <url>http://repo.pennassurancesoftware.com/artifactory/libs-snapshot-local/</url>
             <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
     </distributionManagement>
