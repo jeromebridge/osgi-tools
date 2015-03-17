@@ -386,7 +386,7 @@ public class MavenProjectsBundleDeploymentPlan {
       @Override
       public URI getBundleUri() {
          try {
-            return new URI( String.format( "assembly:%s", getMavenProjectBundleFolder().getAbsolutePath() ) );
+            return new URI( String.format( "assembly:%s", FileUtils.getPathForUri( getMavenProjectBundleFolder() ) ) );
          }
          catch( Exception exception ) {
             throw new RuntimeException( String.format( "Error getting maven project bundle URI for: %s", mavenProjectHolder.getProject().getArtifactId() ), exception );

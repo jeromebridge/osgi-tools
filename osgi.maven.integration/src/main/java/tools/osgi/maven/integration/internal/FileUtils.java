@@ -40,6 +40,16 @@ public class FileUtils {
          throw new RuntimeException( "Error reading files to hash in " + dirToHash.getAbsolutePath(), e );
       }
    }
+   
+   /**
+    * Gets an absolute path from the file that can be used to construct a URI
+    * @param file File to create URI from
+    * @return Path for the specified file
+    */
+   public static String getPathForUri( File file ) {
+      final String path = file.toURI().toASCIIString();
+      return path.substring( path.indexOf( ":/" ) + 1 );
+   }
 
    private static void collectInputStreams( File dir, List<FileInputStream> foundStreams, boolean includeHiddenFiles ) {
       final File[] fileList = dir.listFiles();

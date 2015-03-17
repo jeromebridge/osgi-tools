@@ -582,7 +582,7 @@ public class OsgiMavenIntegrationService {
 
    private URI getMavenProjectBundleUri( MavenProject project ) {
       try {
-         return new URI( String.format( "assembly:%s", getMavenProjectBundleFolder( project ).getAbsolutePath() ) );
+         return new URI( String.format( "assembly:%s", FileUtils.getPathForUri( getMavenProjectBundleFolder( project ) ) ) );
       }
       catch( Exception exception ) {
          throw new RuntimeException( String.format( "Error getting maven project bundle URI for: %s", project.getArtifactId() ), exception );
