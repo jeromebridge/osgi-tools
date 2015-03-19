@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.osgi.framework.Bundle;
@@ -201,8 +202,10 @@ public class MavenProjectsBundleDeploymentPlan {
    /** Defines a dependency a bundle has on a bundle being deployed */
    public static class BundleDependency implements IBundleDeployment {
       private Bundle bundle;
+      private BundleContext bundleContext;
 
-      public BundleDependency( Bundle bundle ) {
+      public BundleDependency( BundleContext bundleContext, Bundle bundle ) {
+         this.bundleContext = bundleContext;
          this.bundle = bundle;
       }
 
@@ -218,7 +221,24 @@ public class MavenProjectsBundleDeploymentPlan {
 
       @Override
       public Bundle getExistingBundle() {
-         return bundle;
+         Bundle result = bundle;
+         if( bundle.getState() == Bundle.UNINSTALLED ) {
+            result = findExistingBundle();
+         }
+         return ObjectUtils.defaultIfNull( result, bundle );
+      }
+
+      private Bundle findExistingBundle() {
+         Bundle result = null;
+         for( Bundle existing : bundleContext.getBundles() ) {
+            if( existing.getLocation().equals( bundle.getLocation() ) ) {
+               if( existing.getState() != Bundle.UNINSTALLED ) {
+                  result = existing;
+                  break;
+               }
+            }
+         }
+         return result;
       }
 
       @Override
@@ -699,6 +719,27 @@ public class MavenProjectsBundleDeploymentPlan {
       }
    }
 
+   private void calculateDependentBundles() {
+      for( AbstractBundleDeploymentPlan plan : installOrder ) {
+         try {
+            plan.getExistingBundleDependencies().clear();
+            if( plan.hasExistingBundle() ) {
+               plan.getExistingBundleDependencies().addAll( getSecondaryBundleDependencies( plan.getExistingBundle() ) );
+            }
+         }
+         catch( Exception exception ) {
+            throw new RuntimeException( String.format( "Failed to initialize existing bundle dependencies for plan: %s", this ), exception );
+         }
+      }
+   }
+
+   private void calculateStartOrder() {
+      startOrder.clear();
+      startOrder.addAll( installOrder );
+      startOrder.addAll( getExistingBundleDependencies() );
+      sortStartOrder( startOrder );
+   }
+
    private boolean containsExportForImport( Bundle bundle, ImportedPackage importedPackage ) {
       return getExportedPackage( bundle, importedPackage ) != null;
    }
@@ -861,7 +902,7 @@ public class MavenProjectsBundleDeploymentPlan {
             final Bundle dependentBundle = provided.getRequirerWiring().getBundle();
             if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependentBundle ) ) {
                if( BundleUtils.isBundleResolved( dependentBundle ) ) {
-                  results.add( new BundleDependency( dependentBundle ) );
+                  results.add( new BundleDependency( bundleContext, dependentBundle ) );
                   results.addAll( getSecondaryBundleDependencies( dependentBundle ) );
                }
             }
@@ -914,16 +955,7 @@ public class MavenProjectsBundleDeploymentPlan {
 
    private void initDependentBundles() {
       final Date startTime = new Date();
-      for( AbstractBundleDeploymentPlan plan : installOrder ) {
-         try {
-            if( plan.hasExistingBundle() ) {
-               plan.getExistingBundleDependencies().addAll( getSecondaryBundleDependencies( plan.getExistingBundle() ) );
-            }
-         }
-         catch( Exception exception ) {
-            throw new RuntimeException( String.format( "Failed to initialize existing bundle dependencies for plan: %s", this ), exception );
-         }
-      }
+      calculateDependentBundles();
       initDependentBundlesDuration = new Duration( startTime, new Date() );
    }
 
@@ -953,10 +985,7 @@ public class MavenProjectsBundleDeploymentPlan {
 
    private void initStartOrder() {
       final Date startTime = new Date();
-      startOrder.clear();
-      startOrder.addAll( installOrder );
-      startOrder.addAll( getExistingBundleDependencies() );
-      sortStartOrder( startOrder );
+      calculateStartOrder();
       initStartOrderDuration = new Duration( startTime, new Date() );
    }
 

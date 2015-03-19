@@ -308,7 +308,7 @@ public class OsgiMavenIntegrationService {
          }
 
          // Refresh Dependent Bundles
-         refreshDependentBundles( deploymentPlan );
+         refreshDependentBundles( deploymentPlan, reinstall );
 
          // Start Bundles
          for( IBundleDeployment deploy : deploymentPlan.getStartOrder() ) {
@@ -345,18 +345,38 @@ public class OsgiMavenIntegrationService {
       }
    }
 
-   @SuppressWarnings("unused")
-   private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, IBundleDeployment deployed ) {
-      for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies( deployed ) ) {
-         getPackageAdmin().refreshPackages( new Bundle[]{ dependency.getExistingBundle() } );
-         System.out.println( String.format( "Refreshed Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
-      }
-   }
+   private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean reinstall ) {
+      if( reinstall ) {
+         // Uninstall First
+         final List<String> locations = new ArrayList<String>();
+         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            final Bundle existing = dependency.getExistingBundle();
+            locations.add( existing.getLocation() );
+            try {
+               existing.uninstall();
+            }
+            catch( Throwable exception ) {
+               throw new RuntimeException( String.format( "Failed to uninstall bundle: %s(%s)", existing.getSymbolicName(), existing.getBundleId() ), exception );
+            }
+            System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+         }
 
-   private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
-      for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
-         getPackageAdmin().refreshPackages( new Bundle[]{ dependency.getExistingBundle() } );
-         System.out.println( String.format( "Refreshed Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+         // Install
+         for( String location : locations ) {
+            try {
+               final Bundle installed = bundleContext.installBundle( location );
+               System.out.println( String.format( "Installed Bundle(%s): %s", installed.getBundleId(), installed.getSymbolicName() ) );
+            }
+            catch( Throwable exception ) {
+               throw new RuntimeException( String.format( "Failed to install bundle from location: %s", location ), exception );
+            }
+         }
+      }
+      else {
+         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            getPackageAdmin().refreshPackages( new Bundle[]{ dependency.getExistingBundle() } );
+            System.out.println( String.format( "Refreshed Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+         }
       }
    }
 
