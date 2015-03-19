@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.felix.bundlerepository.Repository;
 import org.apache.felix.bundlerepository.RepositoryAdmin;
@@ -48,6 +49,7 @@ import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tools.osgi.analyzer.api.BundleUtils;
 import tools.osgi.analyzer.api.IOsgiAnalyzerService;
 import tools.osgi.analyzer.api.UsesConflict;
 import tools.osgi.maven.integration.internal.Duration;
@@ -56,7 +58,9 @@ import tools.osgi.maven.integration.internal.MavenProjectHolder;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.AbstractBundleValidationError;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleDependency;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.BundleImportRequirement;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.IBundleDeployment;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
@@ -231,7 +235,7 @@ public class OsgiMavenIntegrationService {
          // Uninstall First?
          if( reinstall ) {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
-               final Bundle existing = getExisting( plan );
+               final Bundle existing = plan.getExistingBundle();
                if( existing != null ) {
                   existing.uninstall();
                   System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
@@ -250,11 +254,16 @@ public class OsgiMavenIntegrationService {
 
          // Stop Existing Project Bundles
          for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
-            final Bundle existing = getExisting( plan );
-            if( existing != null ) {
-               existing.stop();
-               System.out.println( String.format( "Stopped Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+            if( plan.hasExistingBundle() ) {
+               plan.getExistingBundle().stop();
+               System.out.println( String.format( "Stopped Bundle(%s): %s", plan.getExistingBundle().getBundleId(), plan.getExistingBundle().getSymbolicName() ) );
             }
+         }
+
+         // Stop Existing Dependent Bundles
+         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            dependency.getExistingBundle().stop();
+            System.out.println( String.format( "Stopped Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
          }
 
          // Install Plan
@@ -263,11 +272,10 @@ public class OsgiMavenIntegrationService {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
                if( !dependenciesOnly || plan instanceof MavenDependencyBundleDeploymentPlan ) {
                   try {
-                     final Bundle existing = getExisting( plan );
-                     if( existing != null ) {
+                     if( plan.hasExistingBundle() ) {
                         update( plan );
-                        installedBundles.add( existing );
-                        System.out.println( String.format( "Updated Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+                        installedBundles.add( plan.getExistingBundle() );
+                        System.out.println( String.format( "Updated Bundle(%s): %s", plan.getExistingBundle().getBundleId(), plan.getExistingBundle().getSymbolicName() ) );
                      }
                      else {
                         final Bundle bundle = install( plan );
@@ -289,7 +297,7 @@ public class OsgiMavenIntegrationService {
             }
          }
 
-         // Resolve And Start
+         // Resolve Installed Bundles
          final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
          if( !fw.resolveBundles( installedBundles ) ) {
             System.out.println( "Maven Projects Not Resolved" );
@@ -298,8 +306,15 @@ public class OsgiMavenIntegrationService {
             installedBundles.toArray( refreshBundles );
             packageAdmin.refreshPackages( refreshBundles );
          }
-         for( Bundle bundle : installedBundles ) {
+
+         // Refresh Dependent Bundles
+         refreshDependentBundles( deploymentPlan );
+
+         // Start Bundles
+         for( IBundleDeployment deploy : deploymentPlan.getStartOrder() ) {
+            final Bundle bundle = deploy.getExistingBundle();
             try {
+               Validate.notNull( bundle, "No installed bundle could be found for: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() );
                bundle.start();
             }
             catch( Exception exception ) {
@@ -314,9 +329,9 @@ public class OsgiMavenIntegrationService {
                   }
                }
                else {
-                  System.out.println( String.format( "Failed Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                  System.out.println( String.format( "Failed Starting: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ) );
                   exception.printStackTrace();
-                  throw new RuntimeException( String.format( "Error Starting Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ), exception );
+                  throw new RuntimeException( String.format( "Error Starting: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ), exception );
                }
             }
             System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
@@ -327,6 +342,21 @@ public class OsgiMavenIntegrationService {
       }
       catch( Throwable exception ) {
          exception.printStackTrace();
+      }
+   }
+
+   @SuppressWarnings("unused")
+   private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, IBundleDeployment deployed ) {
+      for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies( deployed ) ) {
+         getPackageAdmin().refreshPackages( new Bundle[]{ dependency.getExistingBundle() } );
+         System.out.println( String.format( "Refreshed Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+      }
+   }
+
+   private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
+      for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+         getPackageAdmin().refreshPackages( new Bundle[]{ dependency.getExistingBundle() } );
+         System.out.println( String.format( "Refreshed Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
       }
    }
 
@@ -511,22 +541,6 @@ public class OsgiMavenIntegrationService {
       return result;
    }
 
-   private Bundle getBundleByNameOrId( String bundleId ) {
-      Bundle result = null;
-      if( isLong( bundleId ) ) {
-         result = bundleContext.getBundle( Long.valueOf( bundleId ) );
-      }
-      else {
-         for( Bundle bundle : bundleContext.getBundles() ) {
-            if( bundle.getSymbolicName().equals( bundleId ) ) {
-               result = bundle;
-               break;
-            }
-         }
-      }
-      return result;
-   }
-
    private DeployedMavenProject getDeployed( Artifact artifact ) {
       DeployedMavenProject result = null;
       for( DeployedMavenProject deployed : deployedMavenProjects ) {
@@ -558,22 +572,6 @@ public class OsgiMavenIntegrationService {
          }
       }
       return result;
-   }
-
-   private Bundle getExisting( AbstractBundleDeploymentPlan plan ) {
-      try {
-         Bundle result = null;
-         if( isVirgoEnvironment() && plan.isWebBundle() ) {
-            result = getBundleByNameOrId( plan.getManifest().getBundleSymbolicName().getSymbolicName() );
-         }
-         else {
-            result = bundleContext.getBundle( plan.getBundleUri().toURL().toExternalForm() );
-         }
-         return result;
-      }
-      catch( Throwable exception ) {
-         throw new RuntimeException( "Error finding existing bundle for plan: " + plan, exception );
-      }
    }
 
    private File getMavenProjectBundleFolder( MavenProject project ) {
@@ -668,15 +666,15 @@ public class OsgiMavenIntegrationService {
    private Bundle install( AbstractBundleDeploymentPlan plan ) {
       try {
          Bundle result = null;
-         if( isVirgoEnvironment() && plan.isWebBundle() ) {
+         if( BundleUtils.isVirgoEnvironment( bundleContext ) && plan.isWebBundle() ) {
             if( plan.getFile().isDirectory() ) {
                final File jarFile = plan.createJarFile();
                final DeploymentIdentity id = getApplicationDeployer().install( jarFile.toURI() );
-               result = getBundleByNameOrId( id.getSymbolicName() );
+               result = BundleUtils.getBundleByNameOrId( bundleContext, id.getSymbolicName() );
             }
             else {
                final DeploymentIdentity id = getApplicationDeployer().install( plan.getFile().toURI() );
-               result = getBundleByNameOrId( id.getSymbolicName() );
+               result = BundleUtils.getBundleByNameOrId( bundleContext, id.getSymbolicName() );
             }
          }
          else {
@@ -691,17 +689,6 @@ public class OsgiMavenIntegrationService {
 
    private boolean isDeployed( File mavenProjectFolder ) {
       return getDeployed( mavenProjectFolder ) != null;
-   }
-
-   private boolean isLong( String value ) {
-      boolean result = true;
-      try {
-         Long.parseLong( value );
-      }
-      catch( Throwable exception ) {
-         result = false;
-      }
-      return result;
    }
 
    private boolean isMavenProject( File folder ) {
@@ -730,11 +717,6 @@ public class OsgiMavenIntegrationService {
       return !getOsgiAnalyzerService().findUsesConflicts( bundle ).isEmpty();
    }
 
-   private boolean isVirgoEnvironment() {
-      // TODO Determine If Virgo Environment
-      return true;
-   }
-
    private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
       System.out.println( "" );
       System.out.println( "Deployment Plan" );
@@ -756,6 +738,8 @@ public class OsgiMavenIntegrationService {
          System.out.println( "Nothing to deploy." );
       }
       System.out.println( "" );
+      printRefreshExistingDependent( deploymentPlan, verbose );
+      System.out.println( "" );
       printUnresolved( deploymentPlan, verbose, Resolution.MANDATORY );
       if( showOptionalImports ) {
          printUnresolved( deploymentPlan, verbose, Resolution.OPTIONAL );
@@ -764,10 +748,23 @@ public class OsgiMavenIntegrationService {
       printValidationErrors( deploymentPlan, verbose );
    }
 
+   private void printRefreshExistingDependent( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
+      if( deploymentPlan.isExistingBundleDependencies() ) {
+         System.out.println( "Existing Dependent Bundles" );
+         System.out.println( "===============================================" );
+         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            System.out.println( String.format( "Refresh Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+         }
+      }
+   }
+
    private void printDeploymentPlanDurations( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
       printDuration( deploymentPlan.getInitDependencyPlansDuration(), "Init Dependency Plans" );
       printDuration( deploymentPlan.getInitProjectPlansDuration(), "Init Project Plans" );
       printDuration( deploymentPlan.getInitInstallOrderDuration(), "Init Install Order" );
+      printDuration( deploymentPlan.getValidatePlansDuration(), "Validate Plans" );
+      printDuration( deploymentPlan.getInitDependentBundlesDuration(), "Init Dependent Bundles" );
+      printDuration( deploymentPlan.getInitStartOrderDuration(), "Init Start Order" );
    }
 
    private void printDuration( Duration duration, String description ) {
@@ -871,9 +868,9 @@ public class OsgiMavenIntegrationService {
 
    private Bundle update( AbstractBundleDeploymentPlan plan ) {
       try {
-         final Bundle bundle = getExisting( plan );
+         final Bundle bundle = plan.getExistingBundle();
          if( bundle != null ) {
-            if( isVirgoEnvironment() && plan.isWebBundle() ) {
+            if( BundleUtils.isVirgoEnvironment( bundleContext ) && plan.isWebBundle() ) {
                final File jarFile = plan.createJarFile();
                bundle.update( new FileInputStream( jarFile ) );
             }

@@ -14,7 +14,10 @@ import org.apache.felix.service.command.Parameter;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
+import org.osgi.framework.wiring.BundleRevision;
+import org.osgi.framework.wiring.BundleWire;
 import org.osgi.framework.wiring.BundleWiring;
+import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.util.tracker.ServiceTracker;
 import org.springframework.context.ApplicationContext;
 
@@ -38,6 +41,10 @@ public class OsgiAnalyzerCommandService {
                names = { "-u", "--use-conflicts" },
                presentValue = "true",
                absentValue = "false") boolean includeUsesConflicts,
+         @Descriptor("Removal Pending bundles") @Parameter(
+               names = { "-r", "--removal-pending" },
+               presentValue = "true",
+               absentValue = "false") boolean includeRemovalPending,
          @Descriptor("Find all issues with bundles") @Parameter(
                names = { "-a", "--all" },
                presentValue = "true",
@@ -49,6 +56,9 @@ public class OsgiAnalyzerCommandService {
          }
          if( includeUsesConflicts || includeAll ) {
             printBundlesWithUsesConflicts();
+         }
+         if( includeRemovalPending || includeAll ) {
+            printBundlesThatAreRemovalPending();
          }
       }
       catch( Exception exception ) {
@@ -238,6 +248,37 @@ public class OsgiAnalyzerCommandService {
       tracker.open();
       final IOsgiAnalyzerService result = ( IOsgiAnalyzerService )tracker.getService();
       return result;
+   }
+
+   private void printBundlesThatAreRemovalPending() {
+      final String format = "| %1$-35s|%2$10s |%3$25s |";
+      final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
+      final FrameworkWiring fw = bundleContext.getBundle( 0 ).adapt( FrameworkWiring.class );
+      if( !fw.getRemovalPendingBundles().isEmpty() ) {
+         System.out.println( line );
+         System.out.println( String.format( format, "Bundle", "Bundle ID", "State" ) );
+         System.out.println( line );
+         for( Bundle removalPending : fw.getRemovalPendingBundles() ) {
+            final String bundleNameRaw = removalPending.getSymbolicName();
+            final String bundleName = bundleNameRaw.substring( 0, Math.min( 34, bundleNameRaw.length() ) );
+            final Long bundleId = removalPending.getBundleId();
+            System.out.println( String.format( format, bundleName, bundleId, BundleUtils.getStateDescription( removalPending ) ) );
+         }
+      }
+      for( Bundle bundle : bundleContext.getBundles() ) {
+         final BundleWiring wiring = bundle.adapt( BundleWiring.class );
+         if( wiring != null ) {
+            for( BundleWire required : wiring.getRequiredWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+               if( !required.getProviderWiring().isCurrent() ) {
+                  System.out.println( "Wire not current: " + required );
+               }
+            }
+
+            if( !wiring.isCurrent() ) {
+               System.out.println( String.format( "Bundle %s(%s) is not current", bundle.getSymbolicName(), bundle.getBundleId() ) );
+            }
+         }
+      }
    }
 
    private void printBundlesWithMissingDependencies() {

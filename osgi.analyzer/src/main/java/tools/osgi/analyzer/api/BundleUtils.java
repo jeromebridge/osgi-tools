@@ -2,7 +2,9 @@ package tools.osgi.analyzer.api;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
@@ -22,6 +24,22 @@ import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 @SuppressWarnings("deprecation")
 public class BundleUtils {
 
+   public static boolean isVirgoEnvironment( BundleContext bundleContext ) {
+      // TODO Determine If Virgo Environment
+      return true;
+   }
+
+   public static ImportedPackage getImportedPackage( Bundle bundle, String packageName ) {
+      ImportedPackage result = null;
+      for( ImportedPackage importedPackage : BundleUtils.getImportedPackages( bundle ) ) {
+         if( importedPackage.getPackageName().equals( packageName ) ) {
+            result = importedPackage;
+            break;
+         }
+      }
+      return result;
+   }
+
    public static Bundle getBundleByNameOrId( BundleContext bundleContext, String bundleId ) {
       Bundle result = null;
       if( isLong( bundleId ) ) {
@@ -38,17 +56,6 @@ public class BundleUtils {
       return result;
    }
 
-   public static ImportedPackage getImportedPackage( Bundle bundle, String packageName ) {
-      ImportedPackage result = null;
-      for( ImportedPackage importedPackage : BundleUtils.getImportedPackages( bundle ) ) {
-         if( importedPackage.getPackageName().equals( packageName ) ) {
-            result = importedPackage;
-            break;
-         }
-      }
-      return result;
-   }
-
    public static ImportedPackage getImportedPackage( BundleManifest manifest, String packageName ) {
       ImportedPackage result = null;
       for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
@@ -58,6 +65,10 @@ public class BundleUtils {
          }
       }
       return result;
+   }
+
+   public static boolean isVirgoWebBundle( BundleContext bundleContext, Bundle bundle ) {
+      return isVirgoEnvironment( bundleContext ) && isWebBundle( bundle );
    }
 
    public static boolean isBundleResolved( Bundle bundle ) {
@@ -188,5 +199,24 @@ public class BundleUtils {
       packageAdminTracker.open();
       final PackageAdmin packageAdmin = ( PackageAdmin )packageAdminTracker.getService();
       return packageAdmin;
+   }
+
+   public static boolean isWebBundle( Bundle bundle ) {
+      return isWebBundle( BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() ) );
+   }
+
+   public static boolean isWebBundle( BundleManifest manifest ) {
+      return manifest.getHeader( "Web-ContextPath" ) != null;
+   }
+
+   public static String getStateDescription( Bundle bundle ) {
+      final Map<Integer, String> map = new HashMap<Integer, String>();
+      map.put( Bundle.ACTIVE, "Active" );
+      map.put( Bundle.INSTALLED, "Installed" );
+      map.put( Bundle.RESOLVED, "Resolved" );
+      map.put( Bundle.STARTING, "Starting" );
+      map.put( Bundle.STOPPING, "Stopping" );
+      map.put( Bundle.UNINSTALLED, "Uninstalled" );
+      return map.get( bundle.getState() );
    }
 }

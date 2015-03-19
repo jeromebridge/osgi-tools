@@ -26,7 +26,7 @@ public class FileUtils {
       Validate.isTrue( dirToHash.isDirectory(), "File must be directory" );
       final Vector<FileInputStream> fileStreams = new Vector<FileInputStream>();
 
-      LOG.info( "Found files for hashing:" );
+      LOG.debug( "Found files for hashing:" );
       collectInputStreams( dirToHash, fileStreams, includeHiddenFiles );
 
       final SequenceInputStream seqStream = new SequenceInputStream( fileStreams.elements() );
@@ -68,7 +68,7 @@ public class FileUtils {
          }
          else {
             try {
-               LOG.info( "\t" + f.getAbsolutePath() );
+               LOG.debug( "\t" + f.getAbsolutePath() );
                foundStreams.add( new FileInputStream( f ) );
             }
             catch( FileNotFoundException e ) {

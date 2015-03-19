@@ -15,8 +15,11 @@ import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.wiring.BundleRevision;
+import org.osgi.framework.wiring.BundleWire;
 import org.osgi.framework.wiring.BundleWiring;
 
+import tools.osgi.analyzer.api.BundleUtils;
 import tools.osgi.maven.integration.api.DeployedMavenProject;
 import tools.osgi.maven.integration.api.JarBuilder;
 
@@ -29,19 +32,26 @@ import com.springsource.util.osgi.manifest.parse.DummyParserLogger;
 
 /** Defines a deployment plan for a maven project */
 public class MavenProjectsBundleDeploymentPlan {
-   public static abstract class AbstractBundleDeploymentPlan {
+   public static abstract class AbstractBundleDeploymentPlan implements IBundleDeployment {
+      private BundleContext bundleContext;
+      private List<BundleDependency> existingBundleDependencies = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleDependency>();
       private List<BundleImportRequirement> importRequirements = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
       private BundleManifest manifest;
       private List<AbstractBundleValidationError> validationErrors = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleValidationError>();
       private List<IBundleDeploymentPlanValidator> validators = new ArrayList<MavenProjectsBundleDeploymentPlan.IBundleDeploymentPlanValidator>();
 
-      public AbstractBundleDeploymentPlan( BundleManifest manifest ) {
+      public AbstractBundleDeploymentPlan( BundleContext bundleContext, BundleManifest manifest ) {
          this.manifest = manifest;
+         this.bundleContext = bundleContext;
          validators.add( new DuplicateImportsDeploymentPlanValidator() );
       }
 
       public void addBundleImportRequirement( BundleImportRequirement requirement ) {
          importRequirements.add( requirement );
+      }
+
+      public void addExistingBundleDependency( BundleDependency dependency ) {
+         existingBundleDependencies.add( dependency );
       }
 
       public File createJarFile() {
@@ -62,12 +72,35 @@ public class MavenProjectsBundleDeploymentPlan {
 
       public abstract URI getBundleUri();
 
+      /** Existing Bundle in the OSGi container for this deployment plan */
+      @Override
+      public Bundle getExistingBundle() {
+         try {
+            Bundle result = null;
+            if( BundleUtils.isVirgoEnvironment( bundleContext ) && isWebBundle() ) {
+               result = BundleUtils.getBundleByNameOrId( bundleContext, getManifest().getBundleSymbolicName().getSymbolicName() );
+            }
+            else {
+               result = bundleContext.getBundle( getBundleUri().toURL().toExternalForm() );
+            }
+            return result;
+         }
+         catch( Throwable exception ) {
+            throw new RuntimeException( "Error finding existing bundle for plan: " + this, exception );
+         }
+      }
+
+      public List<BundleDependency> getExistingBundleDependencies() {
+         return existingBundleDependencies;
+      }
+
       public abstract File getFile();
 
       public List<BundleImportRequirement> getImportRequirements() {
          return importRequirements;
       }
 
+      @Override
       public BundleManifest getManifest() {
          return manifest;
       }
@@ -90,6 +123,10 @@ public class MavenProjectsBundleDeploymentPlan {
 
       public List<AbstractBundleValidationError> getValidationErrors() {
          return validationErrors;
+      }
+
+      public boolean hasExistingBundle() {
+         return getExistingBundle() != null;
       }
 
       public boolean isDependentOn( AbstractBundleDeploymentPlan planB ) {
@@ -116,7 +153,7 @@ public class MavenProjectsBundleDeploymentPlan {
       }
 
       public boolean isWebBundle() {
-         return manifest.getHeader( "Web-ContextPath" ) != null;
+         return BundleUtils.isWebBundle( getManifest() );
       }
 
       public void setImportRequirements( List<BundleImportRequirement> importRequirements ) {
@@ -158,6 +195,49 @@ public class MavenProjectsBundleDeploymentPlan {
       @Override
       public String toString() {
          return getValidationMessage();
+      }
+   }
+
+   /** Defines a dependency a bundle has on a bundle being deployed */
+   public static class BundleDependency implements IBundleDeployment {
+      private Bundle bundle;
+
+      public BundleDependency( Bundle bundle ) {
+         this.bundle = bundle;
+      }
+
+      @Override
+      public boolean equals( Object obj ) {
+         boolean result = false;
+         if( obj != null && obj instanceof BundleDependency ) {
+            final BundleDependency other = ( BundleDependency )obj;
+            result = bundle.equals( other.getExistingBundle() );
+         }
+         return result;
+      }
+
+      @Override
+      public Bundle getExistingBundle() {
+         return bundle;
+      }
+
+      @Override
+      public BundleManifest getManifest() {
+         return BundleManifestFactory.createBundleManifest( bundle.getHeaders(), new DummyParserLogger() );
+      }
+
+      @Override
+      public int hashCode() {
+         final int prime = 31;
+         int result = 1;
+         result = prime * result + getClass().hashCode();
+         result = prime * result + ( ( bundle == null ) ? 0 : bundle.hashCode() );
+         return result;
+      }
+
+      @Override
+      public String toString() {
+         return String.format( "Bundle %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() );
       }
    }
 
@@ -328,6 +408,12 @@ public class MavenProjectsBundleDeploymentPlan {
       }
    }
 
+   public static interface IBundleDeployment {
+      Bundle getExistingBundle();
+
+      BundleManifest getManifest();
+   }
+
    /** Interface used to perform validations on the deployment plan */
    public static interface IBundleDeploymentPlanValidator {
       public List<AbstractBundleValidationError> validate( AbstractBundleDeploymentPlan plan );
@@ -336,8 +422,8 @@ public class MavenProjectsBundleDeploymentPlan {
    public static class MavenDependencyBundleDeploymentPlan extends AbstractBundleDeploymentPlan {
       private Artifact dependency;
 
-      public MavenDependencyBundleDeploymentPlan( Artifact dependency ) {
-         super( MavenUtils.getBundleManifest( dependency ) );
+      public MavenDependencyBundleDeploymentPlan( BundleContext bundleContext, Artifact dependency ) {
+         super( bundleContext, MavenUtils.getBundleManifest( dependency ) );
          this.dependency = dependency;
       }
 
@@ -371,8 +457,8 @@ public class MavenProjectsBundleDeploymentPlan {
    public static class MavenProjectBundleDeploymentPlan extends AbstractBundleDeploymentPlan {
       private MavenProjectHolder mavenProjectHolder;
 
-      public MavenProjectBundleDeploymentPlan( MavenProjectHolder holder ) {
-         super( MavenUtils.getBundleManifest( holder.getProject() ) );
+      public MavenProjectBundleDeploymentPlan( BundleContext bundleContext, MavenProjectHolder holder ) {
+         super( bundleContext, MavenUtils.getBundleManifest( holder.getProject() ) );
          this.mavenProjectHolder = holder;
       }
 
@@ -415,21 +501,21 @@ public class MavenProjectsBundleDeploymentPlan {
    private BundleContext bundleContext;
    private List<MavenDependencyBundleDeploymentPlan> dependencyPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan>();
    private List<DeployedMavenProject> deployedMavenProjects = new ArrayList<DeployedMavenProject>();
+   private boolean includeDependencies = false;
    private Duration initDependencyPlansDuration;
+   private Duration initDependentBundlesDuration;
    private Duration initInstallOrderDuration;
    private Duration initProjectPlansDuration;
+   private Duration initStartOrderDuration;
    private List<AbstractBundleDeploymentPlan> installOrder = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
    private List<MavenProjectHolder> mavenProjects = new ArrayList<MavenProjectHolder>();
    private List<MavenProjectBundleDeploymentPlan> projectPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan>();
    private Map<MavenProjectHolder, List<Artifact>> resolvedMavenDependencies = new HashMap<MavenProjectHolder, List<Artifact>>();
-   private boolean includeDependencies = false;
+   private List<IBundleDeployment> startOrder = new ArrayList<MavenProjectsBundleDeploymentPlan.IBundleDeployment>();
+   private Duration validatePlansDuration;
 
    public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects ) {
       this( bundleContext, mavenProjects, new ArrayList<DeployedMavenProject>(), false );
-   }
-
-   public boolean isIncludeDependencies() {
-      return includeDependencies;
    }
 
    public MavenProjectsBundleDeploymentPlan( BundleContext bundleContext, List<MavenProjectHolder> mavenProjects, List<DeployedMavenProject> deployedMavenProjects, boolean includeDependencies ) {
@@ -461,8 +547,42 @@ public class MavenProjectsBundleDeploymentPlan {
       return result;
    }
 
+   public AbstractBundleDeploymentPlan getDeploymentPlanForExistingBundle( Bundle existing ) {
+      AbstractBundleDeploymentPlan result = null;
+      for( AbstractBundleDeploymentPlan plan : installOrder ) {
+         if( plan.hasExistingBundle() && existing.equals( plan.getExistingBundle() ) ) {
+            result = plan;
+            break;
+         }
+      }
+      return result;
+   }
+
+   public List<BundleDependency> getExistingBundleDependencies() {
+      final Set<BundleDependency> result = new HashSet<MavenProjectsBundleDeploymentPlan.BundleDependency>();
+      for( AbstractBundleDeploymentPlan plan : installOrder ) {
+         result.addAll( plan.getExistingBundleDependencies() );
+      }
+      return new ArrayList<MavenProjectsBundleDeploymentPlan.BundleDependency>( result );
+   }
+
+   public List<BundleDependency> getExistingBundleDependencies( IBundleDeployment deployed ) {
+      final List<BundleDependency> all = getExistingBundleDependencies();
+      final List<BundleDependency> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleDependency>();
+      for( BundleDependency dependency : all ) {
+         if( isDependentOn( dependency, deployed ) ) {
+            result.add( dependency );
+         }
+      }
+      return result;
+   }
+
    public Duration getInitDependencyPlansDuration() {
       return initDependencyPlansDuration;
+   }
+
+   public Duration getInitDependentBundlesDuration() {
+      return initDependentBundlesDuration;
    }
 
    public Duration getInitInstallOrderDuration() {
@@ -471,6 +591,10 @@ public class MavenProjectsBundleDeploymentPlan {
 
    public Duration getInitProjectPlansDuration() {
       return initProjectPlansDuration;
+   }
+
+   public Duration getInitStartOrderDuration() {
+      return initStartOrderDuration;
    }
 
    public List<AbstractBundleDeploymentPlan> getInstallOrder() {
@@ -495,6 +619,16 @@ public class MavenProjectsBundleDeploymentPlan {
       return projectPlans;
    }
 
+   /**
+    * Combines the deployment plans with bundles that are dependent
+    * into a single ordered list they should be started
+    * @return Order list bundles should be started for the deployment
+    * plan.
+    */
+   public List<IBundleDeployment> getStartOrder() {
+      return startOrder;
+   }
+
    public List<AbstractBundleDeploymentPlan> getUnresolvedPlans() {
       return getUnresolvedPlans( null );
    }
@@ -507,6 +641,22 @@ public class MavenProjectsBundleDeploymentPlan {
          }
       }
       return result;
+   }
+
+   public Duration getValidatePlansDuration() {
+      return validatePlansDuration;
+   }
+
+   public boolean hasDeploymentPlanForExistingBundle( Bundle bundle ) {
+      return getDeploymentPlanForExistingBundle( bundle ) != null;
+   }
+
+   public boolean isExistingBundleDependencies() {
+      return !getExistingBundleDependencies().isEmpty();
+   }
+
+   public boolean isIncludeDependencies() {
+      return includeDependencies;
    }
 
    public boolean isResolved() {
@@ -536,13 +686,12 @@ public class MavenProjectsBundleDeploymentPlan {
 
    private void addMavenDependencyPlans( List<Artifact> dependencies ) {
       for( Artifact dependency : dependencies ) {
-         final MavenDependencyBundleDeploymentPlan plan = new MavenDependencyBundleDeploymentPlan( dependency );
+         final MavenDependencyBundleDeploymentPlan plan = new MavenDependencyBundleDeploymentPlan( bundleContext, dependency );
          final BundleManifest manifest = MavenUtils.getBundleManifest( dependency );
          if( manifest == null ) {
             throw new RuntimeException( String.format( "No manifest could be loaded for Maven Dependency: %s", dependency.getArtifactId() ) );
          }
-         final List<BundleImportRequirement> requirements = resolveBundleImportRequirements( manifest );
-         plan.setImportRequirements( requirements );
+         plan.setImportRequirements( resolveBundleImportRequirements( manifest ) );
          if( !dependencyPlans.contains( plan ) ) {
             dependencyPlans.add( plan );
             addMavenDependencyPlans( getUnplannedMavenDependencies( plan ) );
@@ -697,6 +846,29 @@ public class MavenProjectsBundleDeploymentPlan {
       return result;
    }
 
+   private List<BundleDependency> getSecondaryBundleDependencies( Bundle bundle ) {
+      final List<BundleDependency> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleDependency>();
+      final Set<BundleDependency> dependents = new HashSet<MavenProjectsBundleDeploymentPlan.BundleDependency>();
+      getSecondaryBundleDependencies( bundle, dependents );
+      result.addAll( dependents );
+      return result;
+   }
+
+   private void getSecondaryBundleDependencies( Bundle bundle, Set<BundleDependency> results ) {
+      final BundleWiring wiring = bundle.adapt( BundleWiring.class );
+      if( wiring != null ) {
+         for( BundleWire provided : wiring.getProvidedWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+            final Bundle dependentBundle = provided.getRequirerWiring().getBundle();
+            if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependentBundle ) ) {
+               if( BundleUtils.isBundleResolved( dependentBundle ) ) {
+                  results.add( new BundleDependency( dependentBundle ) );
+                  results.addAll( getSecondaryBundleDependencies( dependentBundle ) );
+               }
+            }
+         }
+      }
+   }
+
    private List<Artifact> getUnplannedMavenDependencies( MavenDependencyBundleDeploymentPlan plan ) {
       final List<Artifact> subDependencies = new ArrayList<Artifact>();
       for( BundleImportRequirement requirement : plan.getImportRequirements() ) {
@@ -727,6 +899,8 @@ public class MavenProjectsBundleDeploymentPlan {
       initDependencyPlans();
       initInstallOrder();
       validatePlans();
+      initDependentBundles();
+      initStartOrder();
    }
 
    private void initDependencyPlans() {
@@ -736,6 +910,21 @@ public class MavenProjectsBundleDeploymentPlan {
          addMavenDependencyPlans( getMavenDependenciesFromProjectPlans() );
       }
       initDependencyPlansDuration = new Duration( startTime, new Date() );
+   }
+
+   private void initDependentBundles() {
+      final Date startTime = new Date();
+      for( AbstractBundleDeploymentPlan plan : installOrder ) {
+         try {
+            if( plan.hasExistingBundle() ) {
+               plan.getExistingBundleDependencies().addAll( getSecondaryBundleDependencies( plan.getExistingBundle() ) );
+            }
+         }
+         catch( Exception exception ) {
+            throw new RuntimeException( String.format( "Failed to initialize existing bundle dependencies for plan: %s", this ), exception );
+         }
+      }
+      initDependentBundlesDuration = new Duration( startTime, new Date() );
    }
 
    private void initInstallOrder() {
@@ -751,20 +940,43 @@ public class MavenProjectsBundleDeploymentPlan {
       final Date startTime = new Date();
       projectPlans.clear();
       for( MavenProjectHolder holder : mavenProjects ) {
-         final MavenProjectBundleDeploymentPlan plan = new MavenProjectBundleDeploymentPlan( holder );
+         final MavenProjectBundleDeploymentPlan plan = new MavenProjectBundleDeploymentPlan( bundleContext, holder );
          final BundleManifest manifest = MavenUtils.getBundleManifest( holder.getProject() );
          if( manifest == null ) {
             throw new RuntimeException( String.format( "No manifest could be loaded for Maven Project: %s", holder.getProject().getArtifactId() ) );
          }
-         final List<BundleImportRequirement> requirements = resolveBundleImportRequirements( manifest );
-         plan.setImportRequirements( requirements );
+         plan.setImportRequirements( resolveBundleImportRequirements( manifest ) );
          projectPlans.add( plan );
       }
       initProjectPlansDuration = new Duration( startTime, new Date() );
    }
 
+   private void initStartOrder() {
+      final Date startTime = new Date();
+      startOrder.clear();
+      startOrder.addAll( installOrder );
+      startOrder.addAll( getExistingBundleDependencies() );
+      sortStartOrder( startOrder );
+      initStartOrderDuration = new Duration( startTime, new Date() );
+   }
+
    private boolean isCircular( AbstractBundleDeploymentPlan planA, AbstractBundleDeploymentPlan planB ) {
       return planA.isDependentOn( planB ) && planB.isDependentOn( planA );
+   }
+
+   private boolean isCircular( IBundleDeployment deployA, IBundleDeployment deployB ) {
+      return isDependentOn( deployA, deployB ) && isDependentOn( deployB, deployA );
+   }
+
+   private boolean isDependentOn( IBundleDeployment deployed, IBundleDeployment otherDeployed ) {
+      boolean result = false;
+      for( ImportedPackage importedPackage : deployed.getManifest().getImportPackage().getImportedPackages() ) {
+         if( containsExportForImport( otherDeployed.getManifest(), importedPackage ) ) {
+            result = true;
+            break;
+         }
+      }
+      return result;
    }
 
    private List<Artifact> resolveAllMavenDependencies() {
@@ -777,7 +989,6 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private List<BundleImportRequirement> resolveBundleImportRequirements( BundleManifest manifest ) {
-      // resolveAllMavenDependencies();
       final List<BundleImportRequirement> result = new ArrayList<MavenProjectsBundleDeploymentPlan.BundleImportRequirement>();
       for( ImportedPackage importedPackage : manifest.getImportPackage().getImportedPackages() ) {
          final BundleImportRequirement requirement = new BundleImportRequirement( importedPackage );
@@ -848,9 +1059,37 @@ public class MavenProjectsBundleDeploymentPlan {
       current.addAll( ordered );
    }
 
+   private void sortStartOrder( List<IBundleDeployment> current ) {
+      final List<IBundleDeployment> ordered = new ArrayList<MavenProjectsBundleDeploymentPlan.IBundleDeployment>();
+      boolean adjustedFlag = false;
+      for( int index = 0; index < current.size(); index++ ) {
+         final IBundleDeployment deployed = current.get( index );
+         // Find bundles in list that this one depends on and add them to the ordered list
+         for( int importIndex = index + 1; importIndex < current.size(); importIndex++ ) {
+            final IBundleDeployment otherDeployed = current.get( importIndex );
+            if( isDependentOn( deployed, otherDeployed ) ) {
+               if( !ordered.contains( otherDeployed ) && !isCircular( deployed, otherDeployed ) ) {
+                  adjustedFlag = true;
+                  ordered.add( otherDeployed );
+               }
+            }
+         }
+         if( !ordered.contains( deployed ) ) {
+            ordered.add( deployed );
+         }
+      }
+      if( adjustedFlag ) {
+         sortStartOrder( ordered );
+      }
+      current.clear();
+      current.addAll( ordered );
+   }
+
    private void validatePlans() {
+      final Date startTime = new Date();
       for( AbstractBundleDeploymentPlan plan : getInstallOrder() ) {
          plan.validate();
       }
+      validatePlansDuration = new Duration( startTime, new Date() );
    }
 }
