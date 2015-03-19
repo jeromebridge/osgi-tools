@@ -217,7 +217,7 @@ public class OsgiMavenIntegrationService {
          final List<MavenProjectHolder> mavenProjects = getMavenProjects( workspaceFolder, projectFilter );
 
          // Deployment Plan
-         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects, deployedMavenProjects, includeDependencies );
+         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects, deployedMavenProjects, includeDependencies, reinstall );
          printDeploymentPlan( deploymentPlan, showOptionalImports, verbose );
 
          // Plan Only
@@ -234,14 +234,40 @@ public class OsgiMavenIntegrationService {
 
          // Uninstall First?
          if( reinstall ) {
-            for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
-               final Bundle existing = plan.getExistingBundle();
-               if( existing != null ) {
-                  existing.uninstall();
-                  System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
-               }
+            //            // Uninstall Project Plans
+            //            for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
+            //               final Bundle existing = plan.getExistingBundle();
+            //               if( existing != null ) {
+            //                  existing.uninstall();
+            //                  System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+            //               }
+            //
+            //               removeDeployed( existing );
+            //            }
+            //
+            //            // Uninstall Dependents
+            //            final List<String> locations = new ArrayList<String>();
+            //            for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            //               final Bundle existing = dependency.getExistingBundle();
+            //               locations.add( existing.getLocation() );
+            //               try {
+            //                  existing.uninstall();
+            //               }
+            //               catch( Throwable exception ) {
+            //                  throw new RuntimeException( String.format( "Failed to uninstall bundle: %s(%s)", existing.getSymbolicName(), existing.getBundleId() ), exception );
+            //               }
+            //               System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+            //            }
 
-               removeDeployed( existing );
+            for( IBundleDeployment deployed : deploymentPlan.getUninstallOrder() ) {
+               final Bundle bundle = deployed.getExistingBundle();
+               if( bundle != null ) {
+                  bundle.uninstall();
+                  System.out.println( String.format( "Uninstalled Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
+                  if( deploymentPlan.isMavenProject( bundle ) ) {
+                     removeDeployed( bundle );
+                  }
+               }
             }
 
             // Clear Removal Pending
@@ -262,8 +288,10 @@ public class OsgiMavenIntegrationService {
 
          // Stop Existing Dependent Bundles
          for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
-            dependency.getExistingBundle().stop();
-            System.out.println( String.format( "Stopped Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+            if( dependency.getExistingBundle().getState() != Bundle.UNINSTALLED ) {
+               dependency.getExistingBundle().stop();
+               System.out.println( String.format( "Stopped Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+            }
          }
 
          // Install Plan
@@ -308,7 +336,7 @@ public class OsgiMavenIntegrationService {
          }
 
          // Refresh Dependent Bundles
-         refreshDependentBundles( deploymentPlan, reinstall );
+         // refreshDependentBundles( deploymentPlan, reinstall );
 
          // Start Bundles
          for( IBundleDeployment deploy : deploymentPlan.getStartOrder() ) {
@@ -345,6 +373,7 @@ public class OsgiMavenIntegrationService {
       }
    }
 
+   @SuppressWarnings("unused")
    private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean reinstall ) {
       if( reinstall ) {
          // Uninstall First
@@ -353,7 +382,9 @@ public class OsgiMavenIntegrationService {
             final Bundle existing = dependency.getExistingBundle();
             locations.add( existing.getLocation() );
             try {
-               existing.uninstall();
+               if( existing.getState() != Bundle.UNINSTALLED ) {
+                  existing.uninstall();
+               }
             }
             catch( Throwable exception ) {
                throw new RuntimeException( String.format( "Failed to uninstall bundle: %s(%s)", existing.getSymbolicName(), existing.getBundleId() ), exception );
@@ -757,8 +788,8 @@ public class OsgiMavenIntegrationService {
       else {
          System.out.println( "Nothing to deploy." );
       }
-      System.out.println( "" );
-      printRefreshExistingDependent( deploymentPlan, verbose );
+      //      System.out.println( "" );
+      //      printExistingDependentBundles( deploymentPlan, verbose );
       System.out.println( "" );
       printUnresolved( deploymentPlan, verbose, Resolution.MANDATORY );
       if( showOptionalImports ) {
@@ -768,9 +799,10 @@ public class OsgiMavenIntegrationService {
       printValidationErrors( deploymentPlan, verbose );
    }
 
-   private void printRefreshExistingDependent( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
+   @SuppressWarnings("unused")
+   private void printExistingDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
       if( deploymentPlan.isExistingBundleDependencies() ) {
-         System.out.println( "Existing Dependent Bundles" );
+         System.out.println( "Reinstall Bundles" );
          System.out.println( "===============================================" );
          for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
             System.out.println( String.format( "Refresh Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
@@ -781,10 +813,12 @@ public class OsgiMavenIntegrationService {
    private void printDeploymentPlanDurations( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
       printDuration( deploymentPlan.getInitDependencyPlansDuration(), "Init Dependency Plans" );
       printDuration( deploymentPlan.getInitProjectPlansDuration(), "Init Project Plans" );
+      printDuration( deploymentPlan.getInitReinstallPlansDuration(), "Init Reinstall Plans" );
       printDuration( deploymentPlan.getInitInstallOrderDuration(), "Init Install Order" );
       printDuration( deploymentPlan.getValidatePlansDuration(), "Validate Plans" );
       printDuration( deploymentPlan.getInitDependentBundlesDuration(), "Init Dependent Bundles" );
       printDuration( deploymentPlan.getInitStartOrderDuration(), "Init Start Order" );
+      printDuration( deploymentPlan.getInitUninstallOrderDuration(), "Init Uninstall Order" );
    }
 
    private void printDuration( Duration duration, String description ) {
