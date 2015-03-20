@@ -519,7 +519,14 @@ public class MavenProjectsBundleDeploymentPlan {
       }
    }
 
-   public static class ReinstallBundleDeploymentPlan extends AbstractBundleDeploymentPlan {
+   public static abstract class AbstractReinstallDeploymentPlan extends AbstractBundleDeploymentPlan {
+
+      public AbstractReinstallDeploymentPlan( BundleContext bundleContext, BundleManifest manifest ) {
+         super( bundleContext, manifest );
+      }
+   }
+
+   public static class ReinstallBundleDeploymentPlan extends AbstractReinstallDeploymentPlan {
       private Bundle existingBundle;
 
       public ReinstallBundleDeploymentPlan( BundleContext bundleContext, Bundle existingBundle ) {
@@ -532,19 +539,50 @@ public class MavenProjectsBundleDeploymentPlan {
          try {
             return new URI( existingBundle.getLocation() );
          }
-         catch( Exception exception ) {
-            throw new RuntimeException( String.format( "Could not create URI for bundle location: %s", existingBundle.getLocation() ), exception );
+         catch( Throwable exception ) {
+            throw new RuntimeException( String.format( "Failed to get URI for location: %s for bundle: %s(%s)", existingBundle.getLocation(), existingBundle.getSymbolicName(), existingBundle.getBundleId() ), exception );
          }
       }
 
       @Override
       public File getFile() {
-         throw new RuntimeException( "Not supported in this type of plan." );
+         File result = null;
+         if( "file".equalsIgnoreCase( getBundleUri().getScheme() ) ) {
+            result = new File( getBundleUri() );
+         }
+         else {
+            throw new RuntimeException( String.format( "URI: %s for Bundle: %s(%s) is not supported.", getBundleUri(), existingBundle.getSymbolicName(), existingBundle.getBundleId() ) );
+         }
+         return result;
       }
 
       @Override
       public String toString() {
          return String.format( "Reinstall Existing Bundle: %s(%s)", existingBundle.getSymbolicName(), existingBundle.getBundleId() );
+      }
+   }
+
+   public static class ReinstallMavenProjectDeploymentPlan extends AbstractReinstallDeploymentPlan {
+      private DeployedMavenProject deployedProject;
+
+      public ReinstallMavenProjectDeploymentPlan( BundleContext bundleContext, DeployedMavenProject deployedProject ) {
+         super( bundleContext, BundleManifestFactory.createBundleManifest( deployedProject.getBundle().getHeaders(), new DummyParserLogger() ) );
+         this.deployedProject = deployedProject;
+      }
+
+      @Override
+      public URI getBundleUri() {
+         return deployedProject.getBundleUri();
+      }
+
+      @Override
+      public File getFile() {
+         return deployedProject.getFile();
+      }
+
+      @Override
+      public String toString() {
+         return String.format( "Reinstall Existing Project: %s(%s)", deployedProject.getBundle().getSymbolicName(), deployedProject.getBundle().getBundleId() );
       }
    }
 
@@ -562,14 +600,14 @@ public class MavenProjectsBundleDeploymentPlan {
    private List<AbstractBundleDeploymentPlan> installOrder = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
    private List<MavenProjectHolder> mavenProjects = new ArrayList<MavenProjectHolder>();
    private List<MavenProjectBundleDeploymentPlan> projectPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan>();
-   private List<ReinstallBundleDeploymentPlan> reinstallPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.ReinstallBundleDeploymentPlan>();
+   private List<AbstractReinstallDeploymentPlan> reinstallPlans = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractReinstallDeploymentPlan>();
    private Map<MavenProjectHolder, List<Artifact>> resolvedMavenDependencies = new HashMap<MavenProjectHolder, List<Artifact>>();
    private List<IBundleDeployment> startOrder = new ArrayList<MavenProjectsBundleDeploymentPlan.IBundleDeployment>();
    private List<IBundleDeployment> uninstallOrder = new ArrayList<MavenProjectsBundleDeploymentPlan.IBundleDeployment>();
    private Duration validatePlansDuration;
    private boolean reinstall;
 
-   public List<ReinstallBundleDeploymentPlan> getReinstallPlans() {
+   public List<AbstractReinstallDeploymentPlan> getReinstallPlans() {
       return reinstallPlans;
    }
 
@@ -1027,10 +1065,27 @@ public class MavenProjectsBundleDeploymentPlan {
       if( reinstall ) {
          final Date startTime = new Date();
          for( BundleDependency dependency : getExistingBundleDependencies() ) {
-            reinstallPlans.add( new ReinstallBundleDeploymentPlan( bundleContext, dependency.getExistingBundle() ) );
+            final DeployedMavenProject deployedProject = getDeployedProject( dependency.getExistingBundle() );
+            if( deployedProject != null ) {
+               reinstallPlans.add( new ReinstallMavenProjectDeploymentPlan( bundleContext, deployedProject ) );
+            }
+            else {
+               reinstallPlans.add( new ReinstallBundleDeploymentPlan( bundleContext, dependency.getExistingBundle() ) );
+            }
          }
          initReinstallPlansDuration = new Duration( startTime, new Date() );
       }
+   }
+
+   private DeployedMavenProject getDeployedProject( Bundle existingBundle ) {
+      DeployedMavenProject result = null;
+      for( DeployedMavenProject deployed : deployedMavenProjects ) {
+         if( deployed.getBundle().equals( existingBundle ) ) {
+            result = deployed;
+            break;
+         }
+      }
+      return result;
    }
 
    private void initDependencyPlans() {
@@ -1052,7 +1107,7 @@ public class MavenProjectsBundleDeploymentPlan {
       final Date startTime = new Date();
       installOrder.clear();
       installOrder.addAll( getAllPlans() );
-      sortInstallOrder( installOrder );
+      sortPlans( installOrder );
       initInstallOrderDuration = new Duration( startTime, new Date() );
    }
 
@@ -1157,6 +1212,7 @@ public class MavenProjectsBundleDeploymentPlan {
       return resolvedMavenDependencies.get( holder );
    }
 
+   @SuppressWarnings("unused")
    private void sortInstallOrder( List<AbstractBundleDeploymentPlan> current ) {
       final List<AbstractBundleDeploymentPlan> ordered = new ArrayList<MavenProjectsBundleDeploymentPlan.AbstractBundleDeploymentPlan>();
       boolean adjustedFlag = false;
@@ -1182,6 +1238,11 @@ public class MavenProjectsBundleDeploymentPlan {
       }
       current.clear();
       current.addAll( ordered );
+   }
+
+   @SuppressWarnings({ "unchecked", "rawtypes" })
+   private void sortPlans( List<AbstractBundleDeploymentPlan> current ) {
+      sort( ( List )current );
    }
 
    private void sort( List<IBundleDeployment> current ) {

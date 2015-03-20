@@ -20,6 +20,7 @@ import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.util.tracker.ServiceTracker;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.AbstractApplicationContext;
 
 // install -start assembly:/home/developer/git/osgi-tools/osgi.analyzer/bin/maven/classes
 
@@ -201,6 +202,13 @@ public class OsgiAnalyzerCommandService {
          System.out.println( String.format( "Application Context" ) );
          System.out.println( subline );
          final ApplicationContext applicationContext = getBundleApplicationContext( bundle );
+
+         if( applicationContext instanceof AbstractApplicationContext ) {
+            @SuppressWarnings("resource")
+            final AbstractApplicationContext applicationContext2 = ( AbstractApplicationContext )applicationContext;
+            System.out.println( String.format( "Active: %s", applicationContext2.isActive() ) );
+         }
+
          if( applicationContext != null ) {
             for( String beanName : applicationContext.getBeanDefinitionNames() ) {
                System.out.println( beanName );

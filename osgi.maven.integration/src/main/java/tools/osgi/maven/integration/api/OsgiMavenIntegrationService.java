@@ -234,31 +234,7 @@ public class OsgiMavenIntegrationService {
 
          // Uninstall First?
          if( reinstall ) {
-            //            // Uninstall Project Plans
-            //            for( AbstractBundleDeploymentPlan plan : deploymentPlan.getProjectPlans() ) {
-            //               final Bundle existing = plan.getExistingBundle();
-            //               if( existing != null ) {
-            //                  existing.uninstall();
-            //                  System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
-            //               }
-            //
-            //               removeDeployed( existing );
-            //            }
-            //
-            //            // Uninstall Dependents
-            //            final List<String> locations = new ArrayList<String>();
-            //            for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
-            //               final Bundle existing = dependency.getExistingBundle();
-            //               locations.add( existing.getLocation() );
-            //               try {
-            //                  existing.uninstall();
-            //               }
-            //               catch( Throwable exception ) {
-            //                  throw new RuntimeException( String.format( "Failed to uninstall bundle: %s(%s)", existing.getSymbolicName(), existing.getBundleId() ), exception );
-            //               }
-            //               System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
-            //            }
-
+            printHeader( "Uninstall Bundles" );
             for( IBundleDeployment deployed : deploymentPlan.getUninstallOrder() ) {
                final Bundle bundle = deployed.getExistingBundle();
                if( bundle != null ) {
@@ -295,6 +271,7 @@ public class OsgiMavenIntegrationService {
          }
 
          // Install Plan
+         printHeader( "Install Bundles" );
          final List<Bundle> installedBundles = new ArrayList<Bundle>();
          if( deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
             for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
@@ -339,6 +316,7 @@ public class OsgiMavenIntegrationService {
          // refreshDependentBundles( deploymentPlan, reinstall );
 
          // Start Bundles
+         printHeader( "Start Bundles" );
          for( IBundleDeployment deploy : deploymentPlan.getStartOrder() ) {
             final Bundle bundle = deploy.getExistingBundle();
             try {
@@ -528,6 +506,8 @@ public class OsgiMavenIntegrationService {
          deployed.setArtifact( MavenUtils.getAetherArtifact( mavenPlan.getMavenProjectHolder().getProject().getArtifact() ) );
          deployed.setMavenProjectFolder( mavenPlan.getMavenProjectHolder().getProject().getBasedir() );
          deployed.setChecksum( FileUtils.md5HexForDir( deployed.getMavenProjectFolder() ) );
+         deployed.setBundleUri( plan.getBundleUri() );
+         deployed.setFile( plan.getFile() );
 
          removeDeployed( deployed.getArtifact() );
          deployedMavenProjects.add( deployed );
@@ -768,10 +748,14 @@ public class OsgiMavenIntegrationService {
       return !getOsgiAnalyzerService().findUsesConflicts( bundle ).isEmpty();
    }
 
-   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
+   private void printHeader( String title ) {
       System.out.println( "" );
-      System.out.println( "Deployment Plan" );
+      System.out.println( title );
       System.out.println( "===============================================" );
+   }
+
+   private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
+      printHeader( "Deployment Plan" );
       if( !deploymentPlan.getInstallOrder().isEmpty() ) {
          for( AbstractBundleDeploymentPlan plan : deploymentPlan.getInstallOrder() ) {
             System.out.println( plan );
