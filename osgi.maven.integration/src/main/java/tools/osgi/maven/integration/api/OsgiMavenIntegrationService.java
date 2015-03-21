@@ -125,6 +125,10 @@ public class OsgiMavenIntegrationService {
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
                absentValue = "false") boolean dependenciesOnly,
+         @Descriptor("Uninstall Only") @Parameter(
+               names = { "-uo", "--uninstall-only" },
+               presentValue = "true",
+               absentValue = "false") boolean uninstallOnly,
          @Descriptor("Include Dependencies In Deploy Plan") @Parameter(
                names = { "-id", "--include-dependencies" },
                presentValue = "true",
@@ -143,7 +147,7 @@ public class OsgiMavenIntegrationService {
                absentValue = "false") boolean diagnose,
          @Descriptor("Path to workspace directory that contains Maven projects to deploy") String workspacePath
          ) {
-      deploy( verbose, planOnly, reinstall, refreshUsesConflicts, dependenciesOnly, includeDependencies, showOptionalImports, force, diagnose, workspacePath, null );
+      deploy( verbose, planOnly, reinstall, refreshUsesConflicts, dependenciesOnly, uninstallOnly, includeDependencies, showOptionalImports, force, diagnose, workspacePath, null );
    }
 
    @Descriptor("Deploys all the subfolders of the specified directory if they are compiled Maven projects that are also bundles.")
@@ -168,6 +172,10 @@ public class OsgiMavenIntegrationService {
                names = { "-do", "--dependencies-only" },
                presentValue = "true",
                absentValue = "false") boolean dependenciesOnly,
+         @Descriptor("Uninstall Only") @Parameter(
+               names = { "-uo", "--uninstall-only" },
+               presentValue = "true",
+               absentValue = "false") boolean uninstallOnly,
          @Descriptor("Include Dependencies In Deploy Plan") @Parameter(
                names = { "-id", "--include-dependencies" },
                presentValue = "true",
@@ -209,7 +217,7 @@ public class OsgiMavenIntegrationService {
          }
 
          // Force
-         if( force ) {
+         if( force || uninstallOnly ) {
             deployedMavenProjects.clear();
          }
 
@@ -217,7 +225,7 @@ public class OsgiMavenIntegrationService {
          final List<MavenProjectHolder> mavenProjects = getMavenProjects( workspaceFolder, projectFilter );
 
          // Deployment Plan
-         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects, deployedMavenProjects, includeDependencies, reinstall );
+         final MavenProjectsBundleDeploymentPlan deploymentPlan = new MavenProjectsBundleDeploymentPlan( bundleContext, mavenProjects, deployedMavenProjects, includeDependencies, reinstall || uninstallOnly );
          printDeploymentPlan( deploymentPlan, showOptionalImports, verbose );
 
          // Plan Only
@@ -233,7 +241,7 @@ public class OsgiMavenIntegrationService {
          }
 
          // Uninstall First?
-         if( reinstall ) {
+         if( reinstall || uninstallOnly ) {
             printHeader( "Uninstall Bundles" );
             for( IBundleDeployment deployed : deploymentPlan.getUninstallOrder() ) {
                final Bundle bundle = deployed.getExistingBundle();
@@ -252,6 +260,12 @@ public class OsgiMavenIntegrationService {
                // System.out.println( String.format( "Removal Pending: %s(%s)", removalPending.getSymbolicName(), removalPending.getBundleId() ) );
                fw.refreshBundles( Arrays.asList( removalPending ) );
             }
+         }
+         
+         // Uninstall Only
+         if( uninstallOnly ) {
+            printSummary( startTime, deploymentPlan );
+            return;
          }
 
          // Stop Existing Project Bundles
