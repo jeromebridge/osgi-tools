@@ -813,10 +813,10 @@ public class OsgiMavenIntegrationService {
       printDuration( deploymentPlan.getInitProjectPlansDuration(), "Init Project Plans" );
       printDuration( deploymentPlan.getInitReinstallPlansDuration(), "Init Reinstall Plans" );
       printDuration( deploymentPlan.getInitInstallOrderDuration(), "Init Install Order" );
-      printDuration( deploymentPlan.getValidatePlansDuration(), "Validate Plans" );
       printDuration( deploymentPlan.getInitDependentBundlesDuration(), "Init Dependent Bundles" );
       printDuration( deploymentPlan.getInitStartOrderDuration(), "Init Start Order" );
       printDuration( deploymentPlan.getInitUninstallOrderDuration(), "Init Uninstall Order" );
+      printDuration( deploymentPlan.getValidatePlansDuration(), "Validate Plans" );
    }
 
    private void printDuration( Duration duration, String description ) {
