@@ -63,6 +63,7 @@ import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.B
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.IBundleDeployment;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenDependencyBundleDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.MavenProjectBundleDeploymentPlan;
+import tools.osgi.maven.integration.internal.MavenProjectsBundleDeploymentPlan.ReinstallMavenProjectDeploymentPlan;
 import tools.osgi.maven.integration.internal.MavenProjectsObrResult;
 import tools.osgi.maven.integration.internal.MavenUtils;
 import tools.osgi.maven.integration.internal.ObrUtils;
@@ -261,7 +262,7 @@ public class OsgiMavenIntegrationService {
                fw.refreshBundles( Arrays.asList( removalPending ) );
             }
          }
-         
+
          // Uninstall Only
          if( uninstallOnly ) {
             printSummary( startTime, deploymentPlan );
@@ -522,6 +523,13 @@ public class OsgiMavenIntegrationService {
          deployed.setChecksum( FileUtils.md5HexForDir( deployed.getMavenProjectFolder() ) );
          deployed.setBundleUri( plan.getBundleUri() );
          deployed.setFile( plan.getFile() );
+
+         removeDeployed( deployed.getArtifact() );
+         deployedMavenProjects.add( deployed );
+      }
+      else if( plan instanceof ReinstallMavenProjectDeploymentPlan ) {
+         final ReinstallMavenProjectDeploymentPlan mavenPlan = ( ReinstallMavenProjectDeploymentPlan )plan;
+         final DeployedMavenProject deployed = mavenPlan.getDeployedProject();
 
          removeDeployed( deployed.getArtifact() );
          deployedMavenProjects.add( deployed );

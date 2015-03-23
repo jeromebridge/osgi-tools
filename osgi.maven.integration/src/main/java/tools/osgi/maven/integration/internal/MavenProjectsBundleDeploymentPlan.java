@@ -570,6 +570,10 @@ public class MavenProjectsBundleDeploymentPlan {
          this.deployedProject = deployedProject;
       }
 
+      public DeployedMavenProject getDeployedProject() {
+         return deployedProject;
+      }
+
       @Override
       public URI getBundleUri() {
          return deployedProject.getBundleUri();
