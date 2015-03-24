@@ -548,7 +548,12 @@ public class MavenProjectsBundleDeploymentPlan {
       public File getFile() {
          File result = null;
          if( "file".equalsIgnoreCase( getBundleUri().getScheme() ) ) {
-            result = new File( getBundleUri() );
+            try {
+               result = new File( getBundleUri() );
+            }
+            catch( Throwable exception ) {
+               throw new RuntimeException( String.format( "Failed to get file for Bundle URI: %s", getBundleUri() ), exception );
+            }
          }
          else {
             throw new RuntimeException( String.format( "URI: %s for Bundle: %s(%s) is not supported.", getBundleUri(), existingBundle.getSymbolicName(), existingBundle.getBundleId() ) );
