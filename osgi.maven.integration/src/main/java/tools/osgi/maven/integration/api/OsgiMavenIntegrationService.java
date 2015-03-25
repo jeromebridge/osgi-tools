@@ -366,92 +366,9 @@ public class OsgiMavenIntegrationService {
       }
    }
 
-   @SuppressWarnings("unused")
-   private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean reinstall ) {
-      if( reinstall ) {
-         // Uninstall First
-         final List<String> locations = new ArrayList<String>();
-         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
-            final Bundle existing = dependency.getExistingBundle();
-            locations.add( existing.getLocation() );
-            try {
-               if( existing.getState() != Bundle.UNINSTALLED ) {
-                  existing.uninstall();
-               }
-            }
-            catch( Throwable exception ) {
-               throw new RuntimeException( String.format( "Failed to uninstall bundle: %s(%s)", existing.getSymbolicName(), existing.getBundleId() ), exception );
-            }
-            System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
-         }
-
-         // Install
-         for( String location : locations ) {
-            try {
-               final Bundle installed = bundleContext.installBundle( location );
-               System.out.println( String.format( "Installed Bundle(%s): %s", installed.getBundleId(), installed.getSymbolicName() ) );
-            }
-            catch( Throwable exception ) {
-               throw new RuntimeException( String.format( "Failed to install bundle from location: %s", location ), exception );
-            }
-         }
-      }
-      else {
-         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
-            getPackageAdmin().refreshPackages( new Bundle[]{ dependency.getExistingBundle() } );
-            System.out.println( String.format( "Refreshed Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
-         }
-      }
-   }
-
-   private void diagnoseInstallFailure( AbstractBundleDeploymentPlan plan, Exception exception ) {
-      try {
-         System.out.println( "Diagnosing Install Exception..." );
-         final List<UsesConflictError> conflictsFromMessage = parseUsesConflicts( exception );
-         final List<UsesConflict> conflicts = new ArrayList<UsesConflict>();
-         if( conflictsFromMessage.isEmpty() ) {
-            conflicts.addAll( getOsgiAnalyzerService().findUsesConflicts( plan.getManifest().toDictionary() ) );
-         }
-         else {
-            for( UsesConflictError error : conflictsFromMessage ) {
-               conflicts.addAll( getOsgiAnalyzerService().findUsesConflicts( plan.getManifest().toDictionary(), error.getImportPackageName() ) );
-            }
-         }
-         if( !conflicts.isEmpty() ) {
-            System.out.println( "Uses Conflicts Found:" );
-            for( UsesConflict conflict : conflicts ) {
-               System.out.println( "   " + conflict );
-            }
-         }
-         else {
-            System.out.println( "No Uses Conflicts Found:" );
-         }
-      }
-      catch( Throwable exception2 ) {
-         LOG.error( "Failed to diagnose install failure", exception2 );
-      }
-   }
-
-   private List<UsesConflictError> parseUsesConflicts( Exception exception ) {
-      final String message = ExceptionUtils.getRootCauseMessage( exception );
-      final List<UsesConflictError> result = new ArrayList<UsesConflictError>();
-      final String[] array = message.split( "Uses violation:" );
-      for( int index = 1; index < array.length; index += 2 ) {
-         final String sub = array[index];
-         final String searchText = "<Import-Package:";
-         final int startIndex = sub.indexOf( searchText ) + searchText.length();
-         final int endIndex = sub.indexOf( ";" );
-         final String packageName = sub.substring( startIndex, endIndex ).trim();
-         final int startIndex2 = sub.indexOf( "\"" ) + 1;
-         final int endIndex2 = sub.indexOf( "\"", startIndex2 );
-         final String version = sub.substring( startIndex2, endIndex2 ).trim();
-         final String searchText2 = "bundle <";
-         final int startIndex3 = sub.indexOf( searchText2 ) + searchText2.length();
-         final int endIndex3 = sub.indexOf( "_", startIndex3 );
-         final String bundleSymbolicName = sub.substring( startIndex3, endIndex3 ).trim();
-         result.add( new UsesConflictError( packageName, version, bundleSymbolicName ) );
-      }
-      return result;
+   @Descriptor("Show details of already deployed projects to the OSGi container.")
+   public void show_deployed() {
+      printDeployedProjects();
    }
 
    private Resource addAssemblyResource( MavenProjectsObrResult result, MavenProjectHolder holder ) {
@@ -585,6 +502,34 @@ public class OsgiMavenIntegrationService {
       addAssemblyResources( result );
       addDependencyResources( result );
       return result;
+   }
+
+   private void diagnoseInstallFailure( AbstractBundleDeploymentPlan plan, Exception exception ) {
+      try {
+         System.out.println( "Diagnosing Install Exception..." );
+         final List<UsesConflictError> conflictsFromMessage = parseUsesConflicts( exception );
+         final List<UsesConflict> conflicts = new ArrayList<UsesConflict>();
+         if( conflictsFromMessage.isEmpty() ) {
+            conflicts.addAll( getOsgiAnalyzerService().findUsesConflicts( plan.getManifest().toDictionary() ) );
+         }
+         else {
+            for( UsesConflictError error : conflictsFromMessage ) {
+               conflicts.addAll( getOsgiAnalyzerService().findUsesConflicts( plan.getManifest().toDictionary(), error.getImportPackageName() ) );
+            }
+         }
+         if( !conflicts.isEmpty() ) {
+            System.out.println( "Uses Conflicts Found:" );
+            for( UsesConflict conflict : conflicts ) {
+               System.out.println( "   " + conflict );
+            }
+         }
+         else {
+            System.out.println( "No Uses Conflicts Found:" );
+         }
+      }
+      catch( Throwable exception2 ) {
+         LOG.error( "Failed to diagnose install failure", exception2 );
+      }
    }
 
    private ApplicationDeployer getApplicationDeployer() {
@@ -770,10 +715,53 @@ public class OsgiMavenIntegrationService {
       return !getOsgiAnalyzerService().findUsesConflicts( bundle ).isEmpty();
    }
 
-   private void printHeader( String title ) {
-      System.out.println( "" );
-      System.out.println( title );
-      System.out.println( "===============================================" );
+   private List<UsesConflictError> parseUsesConflicts( Exception exception ) {
+      final String message = ExceptionUtils.getRootCauseMessage( exception );
+      final List<UsesConflictError> result = new ArrayList<UsesConflictError>();
+      final String[] array = message.split( "Uses violation:" );
+      for( int index = 1; index < array.length; index += 2 ) {
+         final String sub = array[index];
+         final String searchText = "<Import-Package:";
+         final int startIndex = sub.indexOf( searchText ) + searchText.length();
+         final int endIndex = sub.indexOf( ";" );
+         final String packageName = sub.substring( startIndex, endIndex ).trim();
+         final int startIndex2 = sub.indexOf( "\"" ) + 1;
+         final int endIndex2 = sub.indexOf( "\"", startIndex2 );
+         final String version = sub.substring( startIndex2, endIndex2 ).trim();
+         final String searchText2 = "bundle <";
+         final int startIndex3 = sub.indexOf( searchText2 ) + searchText2.length();
+         final int endIndex3 = sub.indexOf( "_", startIndex3 );
+         final String bundleSymbolicName = sub.substring( startIndex3, endIndex3 ).trim();
+         result.add( new UsesConflictError( packageName, version, bundleSymbolicName ) );
+      }
+      return result;
+   }
+
+   private void printDeployedProjects() {
+      printHeader( "Deployed Projects" );
+      if( deployedMavenProjects.isEmpty() ) {
+         System.out.println( "No Projects Deployed" );
+      }
+      else {
+         final String format = "| %1$-55s| %2$-80s| %3$-35s|";
+         final String line = new String( new char[String.format( format, "", "", "" ).length()] ).replace( "\0", "-" );
+         System.out.println( line );
+         System.out.println( String.format( format, "Bundle", "Install URI", "Checksum" ) );
+         System.out.println( line );
+         for( DeployedMavenProject deployed : deployedMavenProjects ) {
+            final String bundleDescRaw = String.format( "%s(%s)", deployed.getBundle().getSymbolicName(), deployed.getBundle().getBundleId() );
+            final String bundleDesc = bundleDescRaw.substring( 0, Math.min( 54, bundleDescRaw.length() ) );
+            final String projectPathRaw = deployed.getMavenProjectFolder().getAbsolutePath();
+            @SuppressWarnings("unused")
+            final String projectPath = projectPathRaw.substring( 0, Math.min( 44, projectPathRaw.length() ) );
+            final String checksumRaw = deployed.getChecksum();
+            final String checksum = checksumRaw.substring( 0, Math.min( 34, checksumRaw.length() ) );
+            final String installUriRaw = deployed.getBundleUri().toString();
+            final String installUri = installUriRaw.substring( 0, Math.min( 79, installUriRaw.length() ) );
+            System.out.println( String.format( format, bundleDesc, installUri, checksum ) );
+         }
+         System.out.println( line );
+      }
    }
 
    private void printDeploymentPlan( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean showOptionalImports, boolean verbose ) {
@@ -805,17 +793,6 @@ public class OsgiMavenIntegrationService {
       printValidationErrors( deploymentPlan, verbose );
    }
 
-   @SuppressWarnings("unused")
-   private void printExistingDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
-      if( deploymentPlan.isExistingBundleDependencies() ) {
-         System.out.println( "Reinstall Bundles" );
-         System.out.println( "===============================================" );
-         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
-            System.out.println( String.format( "Refresh Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
-         }
-      }
-   }
-
    private void printDeploymentPlanDurations( MavenProjectsBundleDeploymentPlan deploymentPlan ) {
       printDuration( deploymentPlan.getInitDependencyPlansDuration(), "Init Dependency Plans" );
       printDuration( deploymentPlan.getInitProjectPlansDuration(), "Init Project Plans" );
@@ -831,6 +808,23 @@ public class OsgiMavenIntegrationService {
       if( duration != null ) {
          System.out.println( duration.getFormatted( description ) );
       }
+   }
+
+   @SuppressWarnings("unused")
+   private void printExistingDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean verbose ) {
+      if( deploymentPlan.isExistingBundleDependencies() ) {
+         System.out.println( "Reinstall Bundles" );
+         System.out.println( "===============================================" );
+         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            System.out.println( String.format( "Refresh Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+         }
+      }
+   }
+
+   private void printHeader( String title ) {
+      System.out.println( "" );
+      System.out.println( title );
+      System.out.println( "===============================================" );
    }
 
    @SuppressWarnings("unused")
@@ -910,6 +904,44 @@ public class OsgiMavenIntegrationService {
       final Bundle[] refreshBundles = new Bundle[bundles.size()];
       bundles.toArray( refreshBundles );
       getPackageAdmin().refreshPackages( refreshBundles );
+   }
+
+   @SuppressWarnings("unused")
+   private void refreshDependentBundles( MavenProjectsBundleDeploymentPlan deploymentPlan, boolean reinstall ) {
+      if( reinstall ) {
+         // Uninstall First
+         final List<String> locations = new ArrayList<String>();
+         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            final Bundle existing = dependency.getExistingBundle();
+            locations.add( existing.getLocation() );
+            try {
+               if( existing.getState() != Bundle.UNINSTALLED ) {
+                  existing.uninstall();
+               }
+            }
+            catch( Throwable exception ) {
+               throw new RuntimeException( String.format( "Failed to uninstall bundle: %s(%s)", existing.getSymbolicName(), existing.getBundleId() ), exception );
+            }
+            System.out.println( String.format( "Uninstalled Bundle(%s): %s", existing.getBundleId(), existing.getSymbolicName() ) );
+         }
+
+         // Install
+         for( String location : locations ) {
+            try {
+               final Bundle installed = bundleContext.installBundle( location );
+               System.out.println( String.format( "Installed Bundle(%s): %s", installed.getBundleId(), installed.getSymbolicName() ) );
+            }
+            catch( Throwable exception ) {
+               throw new RuntimeException( String.format( "Failed to install bundle from location: %s", location ), exception );
+            }
+         }
+      }
+      else {
+         for( BundleDependency dependency : deploymentPlan.getExistingBundleDependencies() ) {
+            getPackageAdmin().refreshPackages( new Bundle[]{ dependency.getExistingBundle() } );
+            System.out.println( String.format( "Refreshed Bundle(%s): %s", dependency.getExistingBundle().getBundleId(), dependency.getExistingBundle().getSymbolicName() ) );
+         }
+      }
    }
 
    private void removeDeployed( Artifact artifact ) {

@@ -14,7 +14,7 @@ public class Activator implements BundleActivator {
       try {
          final Hashtable<String, Object> props = new Hashtable<String, Object>();
          props.put( "osgi.command.scope", "m2e" );
-         props.put( "osgi.command.function", new String[]{ "deploy" } );
+         props.put( "osgi.command.function", new String[]{ "deploy", "show_deployed" } );
          context.registerService( OsgiMavenIntegrationService.class.getName(), new OsgiMavenIntegrationService( context ), props );
       }
       catch( Exception exception ) {
