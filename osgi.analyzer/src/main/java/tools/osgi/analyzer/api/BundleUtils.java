@@ -40,6 +40,15 @@ public class BundleUtils {
       return result;
    }
 
+   public static boolean isBundleFragment( Bundle bundle ) {
+      boolean result = false;
+      final BundleRevision revision = bundle.adapt( BundleRevision.class );
+      if( revision != null ) {
+         result = ( revision.getTypes() & BundleRevision.TYPE_FRAGMENT ) != 0;
+      }
+      return result;
+   }
+
    public static Bundle getBundleByNameOrId( BundleContext bundleContext, String bundleId ) {
       Bundle result = null;
       if( isLong( bundleId ) ) {

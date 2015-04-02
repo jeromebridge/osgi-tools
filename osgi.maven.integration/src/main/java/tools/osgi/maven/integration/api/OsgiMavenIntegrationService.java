@@ -332,30 +332,36 @@ public class OsgiMavenIntegrationService {
 
          // Start Bundles
          printHeader( "Start Bundles" );
-         for( IBundleDeployment deploy : deploymentPlan.getStartOrder() ) {
-            final Bundle bundle = deploy.getExistingBundle();
-            try {
-               Validate.notNull( bundle, "No installed bundle could be found for: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() );
-               bundle.start();
-            }
-            catch( Exception exception ) {
-               if( refreshUsesConflicts && isUsesConflict( bundle ) ) {
-                  try {
-                     refreshBundleWithUsesConflicts( bundle );
+         if( deploymentPlan.isResolved( Resolution.MANDATORY ) ) {
+            for( IBundleDeployment deploy : deploymentPlan.getStartOrder() ) {
+               final Bundle bundle = deploy.getExistingBundle();
+               Validate.notNull( bundle, "No installed bundle could be found for: %s", deploy.getManifest().getBundleSymbolicName() );
+               try {
+                  if( !BundleUtils.isBundleFragment( bundle ) ) {
                      bundle.start();
                   }
-                  catch( Exception exception2 ) {
-                     // Diagnose Exception
-                     getOsgiAnalyzerService().diagnose( exception2 );
+               }
+               catch( Exception exception ) {
+                  if( refreshUsesConflicts && isUsesConflict( bundle ) ) {
+                     try {
+                        refreshBundleWithUsesConflicts( bundle );
+                        if( !BundleUtils.isBundleFragment( bundle ) ) {
+                           bundle.start();
+                        }
+                     }
+                     catch( Exception exception2 ) {
+                        // Diagnose Exception
+                        getOsgiAnalyzerService().diagnose( exception2 );
+                     }
+                  }
+                  else {
+                     System.out.println( String.format( "Failed Starting: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ) );
+                     exception.printStackTrace();
+                     throw new RuntimeException( String.format( "Error Starting: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ), exception );
                   }
                }
-               else {
-                  System.out.println( String.format( "Failed Starting: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ) );
-                  exception.printStackTrace();
-                  throw new RuntimeException( String.format( "Error Starting: %s(%s)", bundle.getSymbolicName(), bundle.getBundleId() ), exception );
-               }
+               System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
             }
-            System.out.println( String.format( "Started Bundle(%s): %s", bundle.getBundleId(), bundle.getSymbolicName() ) );
          }
 
          // Print Durations
