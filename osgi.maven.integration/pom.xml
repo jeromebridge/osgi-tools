@@ -462,7 +462,6 @@
                             aether-transport-http,
                             aether-transport-file,
                             aether-connector-basic,
-                            slf4j-log4j12,
                             slf4j-api,
                             wagon-provider-api,
                             aether-util,
