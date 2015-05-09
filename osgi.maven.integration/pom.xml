@@ -350,9 +350,14 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>12.0</version>
+            <groupId>org.sonatype.sisu</groupId>
+            <artifactId>sisu-inject-bean</artifactId>
+            <version>2.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.sonatype.sisu</groupId>
+            <artifactId>sisu-guava</artifactId>
+            <version>0.9.9</version>
         </dependency>
         <dependency>
             <groupId>javax.inject</groupId>
@@ -454,11 +459,18 @@
                             hudson.maven.*;resolution:=optional,
                             org.eclipse.aether.util.repository.layout.*;resolution:=optional,
                             org.apache.maven.wagon.*;resolution:=optional,
+                            !sun.misc.*,
                             *
                         </Import-Package>
                         <Require-Capability>osgi.ee;filter:="(&amp;(osgi.ee=JavaSE)(version=1.6))"</Require-Capability>
                         <Excport-Package>tools.osgi.maven.integration.api*</Excport-Package>
                         <Embed-Dependency>
+                            sisu-guice,
+                            sisu-guava,
+                            sisu-inject-bean,
+                            javax.interceptor-api,
+                            javax.el-api,
+                            cdi-api,
                             aether-transport-http,
                             aether-transport-file,
                             aether-connector-basic,
