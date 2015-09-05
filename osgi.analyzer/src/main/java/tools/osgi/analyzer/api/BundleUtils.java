@@ -56,7 +56,7 @@ public class BundleUtils {
       }
       else {
          for( Bundle bundle : bundleContext.getBundles() ) {
-            if( bundle.getSymbolicName().equals( bundleId ) ) {
+            if( bundle.getSymbolicName() != null && bundle.getSymbolicName().equals( bundleId ) ) {
                result = bundle;
                break;
             }

@@ -302,11 +302,13 @@
             <artifactId>httpcore-osgi</artifactId>
             <version>4.2.5</version>
         </dependency>
+        <!-- 
         <dependency>
             <groupId>org.eclipse.aether</groupId>
             <artifactId>org.eclipse.aether.maven</artifactId>
             <version>3.1.0.v20140706-2237</version>
         </dependency>
+         -->
         <dependency>
             <groupId>org.eclipse.sisu</groupId>
             <artifactId>org.eclipse.sisu.plexus</artifactId>
