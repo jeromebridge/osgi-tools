@@ -8,6 +8,7 @@ import java.util.jar.Manifest;
 
 import org.apache.felix.bundlerepository.DataModelHelper;
 import org.apache.felix.bundlerepository.Resource;
+import org.osgi.framework.Constants;
 
 public class ObrUtils {
 
@@ -16,8 +17,18 @@ public class ObrUtils {
    }
 
    public static boolean isOsgiBundle( final File bundleFolder ) {
-      final File manifestFile = new File( bundleFolder, JarFile.MANIFEST_NAME );
-      return manifestFile.exists();
+      try {
+         final File manifestFile = new File( bundleFolder, JarFile.MANIFEST_NAME );
+         boolean result = manifestFile.exists();
+         if( result ) {
+            final Manifest manifest = new Manifest( new FileInputStream( manifestFile ) );
+            result = manifest.getMainAttributes().getValue( Constants.BUNDLE_SYMBOLICNAME ) != null;
+         }
+         return result;
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( String.format( "Failed checking if folder: %s was valid OSGi bundle", bundleFolder.getAbsolutePath() ), exception );
+      }
    }
 
    public static Resource createResource( DataModelHelper dataModelHelper, final File bundleFolder, final URI uri ) {
