@@ -568,14 +568,19 @@ public class OsgiMavenIntegrationService {
    }
 
    private DeployedMavenProject getDeployed( File mavenProjectFolder ) {
-      DeployedMavenProject result = null;
-      for( DeployedMavenProject deployed : deployedMavenProjects ) {
-         if( deployed.getMavenProjectFolder().equals( mavenProjectFolder ) ) {
-            result = deployed;
-            break;
+      try {
+         DeployedMavenProject result = null;
+         for( DeployedMavenProject deployed : deployedMavenProjects ) {
+            if( deployed.getMavenProjectFolder().getCanonicalPath().equals( mavenProjectFolder.getCanonicalPath() ) ) {
+               result = deployed;
+               break;
+            }
          }
+         return result;
       }
-      return result;
+      catch( Throwable exception ) {
+         throw new RuntimeException( String.format( "Failed to get deployed project for Maven Project: %s", mavenProjectFolder ), exception );
+      }
    }
 
    private File getMavenProjectBundleFolder( MavenProject project ) {
