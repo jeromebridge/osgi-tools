@@ -24,7 +24,10 @@ Make sure you include the gpg properties in your `settings.xml`
 <settings>
   <profiles>
     <profile>
-      <id>osgi-tools</id> <!-- give it the name of your project -->
+      <id>ci</id>
+	  <activation>
+		<activeByDefault>true</activeByDefault>
+	  </activation>
       <properties>
         <gpg.homedir>/home/r</gpg.homedir>
         <gpg.keyname>924CF0D9</gpg.keyname>
