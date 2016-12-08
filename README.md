@@ -19,6 +19,22 @@ Copy the generated keys.
 cp ~/.gnupg/pubring.gpg .; cp ~/.gnupg/secring.gpg .
 ````
 
+Make sure you include the gpg properties in your `settings.xml`
+````
+<settings>
+  <profiles>
+    <profile>
+      <id>osgi-tools</id> <!-- give it the name of your project -->
+      <properties>
+        <gpg.homedir>/home/r</gpg.homedir>
+        <gpg.keyname>924CF0D9</gpg.keyname>
+        <gpg.passphrase></gpg.passphrase>
+      </properties>
+    </profile>
+  </profiles>
+</settings>
+````
+
 Encrypt files.
 ````
 rultor encrypt -p jeromebridge/osgi-tools pubring.gpg
