@@ -5,7 +5,7 @@
 	<groupId>tools.osgi</groupId>
 	<artifactId>osgi-tools.master</artifactId>
 	<name>OSGi Tools - Master</name>
-	<version>1.00.004</version>
+	<version>1.00.000-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<repositories>
