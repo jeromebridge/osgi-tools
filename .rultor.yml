@@ -8,6 +8,7 @@ decrypt:
 release:
   script: |
     mvn versions:set "-DnewVersion=${tag}"
+    find . -name "pom.xml" -exec mvn versions:set "-DnewVersion=${tag}" -f {} \;
     git commit -am "${tag}"
     mvn clean deploy --settings /home/r/settings.xml -Prelease
 
