@@ -20,7 +20,7 @@ cp ~/.gnupg/pubring.gpg .; cp ~/.gnupg/secring.gpg .
 ````
 
 Make sure you include the gpg properties in your `settings.xml`
-````
+```xml
 <settings>
   <profiles>
     <profile>
@@ -36,11 +36,19 @@ Make sure you include the gpg properties in your `settings.xml`
     </profile>
   </profiles>
 </settings>
-````
+```
 
 Encrypt files.
-````
+```shell
 rultor encrypt -p jeromebridge/osgi-tools pubring.gpg
 rultor encrypt -p jeromebridge/osgi-tools secring.gpg
 rultor encrypt -p jeromebridge/osgi-tools settings.xml
-````
+```
+
+Local Build
+```shell
+VERSION=1.00.004
+mvn versions:set "-DnewVersion=$VERSION"
+find . -name "pom.xml" -exec mvn versions:set "-DnewVersion=${VERSION}" -f {} \;
+mvn clean install
+```

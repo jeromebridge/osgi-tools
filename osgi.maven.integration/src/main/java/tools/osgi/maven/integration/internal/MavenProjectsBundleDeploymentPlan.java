@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -893,9 +894,13 @@ public class MavenProjectsBundleDeploymentPlan {
       return matches.isEmpty() ? null : matches.get( 0 );
    }
 
+   private Iterable<Bundle> all() {
+      return Arrays.asList( bundleContext.getBundle( 0 ).getBundleContext().getBundles() );
+   }
+
    private List<Bundle> findBundlesThatSatisfyImport( ImportedPackage importedPackage ) {
       final List<Bundle> result = new ArrayList<Bundle>();
-      for( Bundle bundle : bundleContext.getBundles() ) {
+      for( Bundle bundle : all() ) {
          if( containsExportForImport( bundle, importedPackage ) ) {
             result.add( bundle );
          }
