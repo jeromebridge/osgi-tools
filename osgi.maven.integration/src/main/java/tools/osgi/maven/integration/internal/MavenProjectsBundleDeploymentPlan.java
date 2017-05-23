@@ -1054,10 +1054,10 @@ public class MavenProjectsBundleDeploymentPlan {
          if( wiring != null ) {
             for( BundleWire provided : wiring.getProvidedWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
                final Bundle dependentBundle = provided.getRequirerWiring().getBundle();
-               if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependentBundle ) ) {
+               final BundleDependency dependency = new BundleDependency( bundleContext, dependentBundle );
+               if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependency ) ) {
                   if( BundleUtils.isBundleResolved( dependentBundle ) ) {
-                     results.add( new BundleDependency( bundleContext, dependentBundle ) );
-                     // results.addAll( getSecondaryBundleDependencies( dependentBundle ) );
+                     results.add( dependency );
                      getSecondaryBundleDependencies( dependentBundle, results );
                   }
                }
