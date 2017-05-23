@@ -21,6 +21,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.wiring.BundleRevision;
 import org.osgi.framework.wiring.BundleWire;
 import org.osgi.framework.wiring.BundleWiring;
+import org.osgi.resource.Namespace;
 
 import tools.osgi.analyzer.api.BundleUtils;
 import tools.osgi.maven.integration.api.DeployedMavenProject;
@@ -1053,12 +1054,16 @@ public class MavenProjectsBundleDeploymentPlan {
          final BundleWiring wiring = bundle.adapt( BundleWiring.class );
          if( wiring != null ) {
             for( BundleWire provided : wiring.getProvidedWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
-               final Bundle dependentBundle = provided.getRequirerWiring().getBundle();
-               final BundleDependency dependency = new BundleDependency( bundleContext, dependentBundle );
-               if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependency ) ) {
-                  if( BundleUtils.isBundleResolved( dependentBundle ) ) {
-                     results.add( dependency );
-                     getSecondaryBundleDependencies( dependentBundle, results );
+               final String resolution = provided.getRequirement().getDirectives().get( Namespace.REQUIREMENT_RESOLUTION_DIRECTIVE );
+               final Boolean dynamic = "dynamic".equalsIgnoreCase( resolution );
+               if( !dynamic ) {
+                  final Bundle dependentBundle = provided.getRequirerWiring().getBundle();
+                  final BundleDependency dependency = new BundleDependency( bundleContext, dependentBundle );
+                  if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependency ) ) {
+                     if( BundleUtils.isBundleResolved( dependentBundle ) ) {
+                        results.add( dependency );
+                        getSecondaryBundleDependencies( dependentBundle, results );
+                     }
                   }
                }
             }
