@@ -1049,18 +1049,26 @@ public class MavenProjectsBundleDeploymentPlan {
    }
 
    private void getSecondaryBundleDependencies( Bundle bundle, Set<BundleDependency> results ) {
-      final BundleWiring wiring = bundle.adapt( BundleWiring.class );
-      if( wiring != null ) {
-         for( BundleWire provided : wiring.getProvidedWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
-            final Bundle dependentBundle = provided.getRequirerWiring().getBundle();
-            if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependentBundle ) ) {
-               if( BundleUtils.isBundleResolved( dependentBundle ) ) {
-                  results.add( new BundleDependency( bundleContext, dependentBundle ) );
-                  // results.addAll( getSecondaryBundleDependencies( dependentBundle ) );
-                  getSecondaryBundleDependencies( dependentBundle, results );
+      try {
+         final BundleWiring wiring = bundle.adapt( BundleWiring.class );
+         if( wiring != null ) {
+            for( BundleWire provided : wiring.getProvidedWires( BundleRevision.PACKAGE_NAMESPACE ) ) {
+               final Bundle dependentBundle = provided.getRequirerWiring().getBundle();
+               if( !hasDeploymentPlanForExistingBundle( dependentBundle ) && !results.contains( dependentBundle ) ) {
+                  if( BundleUtils.isBundleResolved( dependentBundle ) ) {
+                     results.add( new BundleDependency( bundleContext, dependentBundle ) );
+                     // results.addAll( getSecondaryBundleDependencies( dependentBundle ) );
+                     getSecondaryBundleDependencies( dependentBundle, results );
+                  }
                }
             }
          }
+      }
+      catch( Throwable exception ) {
+         throw new RuntimeException( String.format(
+               "Failed to calculate secondary bundle dependencies of: %s(%s)",
+               bundle.getSymbolicName(),
+               bundle.getBundleId() ) );
       }
    }
 
