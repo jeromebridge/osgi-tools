@@ -6,12 +6,15 @@ import hudson.maven.MavenRequest;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.io.Writer;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Dictionary;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +44,15 @@ import org.eclipse.virgo.nano.deployer.api.core.ApplicationDeployer;
 import org.eclipse.virgo.nano.deployer.api.core.DeploymentIdentity;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleException;
+import org.osgi.framework.BundleListener;
+import org.osgi.framework.BundleReference;
+import org.osgi.framework.Filter;
+import org.osgi.framework.FrameworkListener;
+import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceListener;
 import org.osgi.framework.ServiceReference;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.framework.wiring.FrameworkWiring;
 import org.osgi.service.packageadmin.PackageAdmin;
@@ -70,6 +81,8 @@ import tools.osgi.maven.integration.internal.ObrUtils;
 import tools.osgi.maven.integration.internal.UsesConflictError;
 import tools.osgi.maven.integration.internal.aether.Booter;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.springsource.util.osgi.manifest.Resolution;
 
 @SuppressWarnings("deprecation")
@@ -80,7 +93,222 @@ public class OsgiMavenIntegrationService {
    private List<DeployedMavenProject> deployedMavenProjects = new ArrayList<DeployedMavenProject>();
 
    public OsgiMavenIntegrationService( BundleContext bundleContext ) {
-      this.bundleContext = bundleContext;
+      this.bundleContext = Support._BundleContext.of( bundleContext )
+            .withFallback( Support._BundleContext.active() );
+   }
+
+   public static abstract class Support {
+      public static abstract class _BundleContext {
+         public static Default of( BundleContext context ) {
+            return new Default( context );
+         }
+
+         public static Active active() {
+            return new Active();
+         }
+
+         public static class Default extends Decorate {
+            private final BundleContext context;
+
+            public Default( final BundleContext context ) {
+               super( new Supplier<BundleContext>() {
+                  @Override
+                  public BundleContext get() {
+                     return context;
+                  }
+               } );
+               this.context = context;
+            }
+
+            public Fallback fallback( Supplier<BundleContext> fallback ) {
+               return new Fallback( context, fallback );
+            }
+
+            public Fallback withFallback( BundleContext fallback ) {
+               return new Fallback( context, fallback );
+            }
+         }
+
+         public static class Fallback extends Decorate {
+            public Fallback( BundleContext context, BundleContext fallback ) {
+               this( context, Suppliers.ofInstance( fallback ) );
+            }
+
+            public Fallback( final BundleContext context, final Supplier<BundleContext> fallback ) {
+               super( new Supplier<BundleContext>() {
+                  @Override
+                  public BundleContext get() {
+                     BundleContext result = context;
+                     try {
+                        result.getBundle();
+                     }
+                     catch( Throwable exception ) {
+                        result = fallback.get();
+                     }
+                     return result;
+                  }
+               } );
+            }
+         }
+
+         public static class Active extends Decorate {
+
+            public Active() {
+               super( new Supplier<BundleContext>() {
+                  @Override
+                  public BundleContext get() {
+                     return BundleReference.class.cast( getClass().getClassLoader() ).getBundle().getBundleContext();
+                  }
+               } );
+            }
+         }
+
+         public static class Decorate implements BundleContext {
+            private final Supplier<BundleContext> supplier;
+
+            protected Supplier<BundleContext> supplier() {
+               return supplier;
+            }
+
+            private BundleContext context() {
+               return supplier.get();
+            }
+
+            public Decorate( Supplier<BundleContext> supplier ) {
+               this.supplier = supplier;
+            }
+
+            @Override
+            public String getProperty( String key ) {
+               return context().getProperty( key );
+            }
+
+            @Override
+            public Bundle getBundle() {
+               return context().getBundle();
+            }
+
+            @Override
+            public Bundle installBundle( String location, InputStream input ) throws BundleException {
+               return context().installBundle( location, input );
+            }
+
+            @Override
+            public Bundle installBundle( String location ) throws BundleException {
+               return context().installBundle( location );
+            }
+
+            @Override
+            public Bundle getBundle( long id ) {
+               return context().getBundle( id );
+            }
+
+            @Override
+            public Bundle[] getBundles() {
+               return context().getBundles();
+            }
+
+            @Override
+            public void addServiceListener( ServiceListener listener, String filter ) throws InvalidSyntaxException {
+               context().addServiceListener( listener, filter );
+            }
+
+            @Override
+            public void addServiceListener( ServiceListener listener ) {
+               context().addServiceListener( listener );
+            }
+
+            @Override
+            public void removeServiceListener( ServiceListener listener ) {
+               context().removeServiceListener( listener );
+            }
+
+            @Override
+            public void addBundleListener( BundleListener listener ) {
+               context().addBundleListener( listener );
+            }
+
+            @Override
+            public void removeBundleListener( BundleListener listener ) {
+               context().removeBundleListener( listener );
+            }
+
+            @Override
+            public void addFrameworkListener( FrameworkListener listener ) {
+               context().addFrameworkListener( listener );
+            }
+
+            @Override
+            public void removeFrameworkListener( FrameworkListener listener ) {
+               context().removeFrameworkListener( listener );
+            }
+
+            @Override
+            public ServiceRegistration<?> registerService( String[] clazzes, Object service, Dictionary<String, ?> properties ) {
+               return context().registerService( clazzes, service, properties );
+            }
+
+            @Override
+            public ServiceRegistration<?> registerService( String clazz, Object service, Dictionary<String, ?> properties ) {
+               return context().registerService( clazz, service, properties );
+            }
+
+            @Override
+            public <S> ServiceRegistration<S> registerService( Class<S> clazz, S service, Dictionary<String, ?> properties ) {
+               return context().registerService( clazz, service, properties );
+            }
+
+            @Override
+            public ServiceReference<?>[] getServiceReferences( String clazz, String filter ) throws InvalidSyntaxException {
+               return context().getServiceReferences( clazz, filter );
+            }
+
+            @Override
+            public ServiceReference<?>[] getAllServiceReferences( String clazz, String filter ) throws InvalidSyntaxException {
+               return context().getAllServiceReferences( clazz, filter );
+            }
+
+            @Override
+            public ServiceReference<?> getServiceReference( String clazz ) {
+               return context().getServiceReference( clazz );
+            }
+
+            @Override
+            public <S> ServiceReference<S> getServiceReference( Class<S> clazz ) {
+               return getServiceReference( clazz );
+            }
+
+            @Override
+            public <S> Collection<ServiceReference<S>> getServiceReferences( Class<S> clazz, String filter ) throws InvalidSyntaxException {
+               return getServiceReferences( clazz, filter );
+            }
+
+            @Override
+            public <S> S getService( ServiceReference<S> reference ) {
+               return context().getService( reference );
+            }
+
+            @Override
+            public boolean ungetService( ServiceReference<?> reference ) {
+               return context().ungetService( reference );
+            }
+
+            @Override
+            public File getDataFile( String filename ) {
+               return context().getDataFile( filename );
+            }
+
+            @Override
+            public Filter createFilter( String filter ) throws InvalidSyntaxException {
+               return context().createFilter( filter );
+            }
+
+            @Override
+            public Bundle getBundle( String location ) {
+               return context().getBundle( location );
+            }
+         }
+      }
    }
 
    // install -start assembly:/home/developer/git/osgi-tools/osgi.analyzer/bin/maven/classes
