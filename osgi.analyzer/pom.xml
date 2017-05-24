@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>tools.osgi</groupId>
     <artifactId>osgi.analyzer</artifactId>
-    <version>1.00.000-SNAPSHOT</version>
+    <version>1.00.009</version>
     <packaging>bundle</packaging>
 
     <name>OSGi Analyzer</name>
